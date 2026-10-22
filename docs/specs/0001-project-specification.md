@@ -64,6 +64,10 @@ Use a TypeScript monorepo and a modular backend. Exact dependency versions will 
 
 Next.js is a reasonable alternative if server-rendered public content becomes central, but the current application is dominated by authenticated board interaction. A dedicated NestJS process also gives realtime connections a clear lifecycle. Django or FastAPI would be reasonable with an established Python team; TypeScript is preferred here to share game-engine code. SVG could serve a small board; canvas is the proposed starting point for many interactive tokens. Neither Kubernetes, Redis, microservices, nor a full event-sourcing system is necessary for the first release.
 
+Implementation should introduce libraries when their feature slice needs them, rather than installing the entire proposed stack upfront. NestJS modules remain in one backend deployment. Prisma is a CRUD and migration tool, not the source of game-rule enforcement. Socket.IO improves update delivery; turn-based correctness still rests on database transactions and revisions. An initial board prototype must validate Konva against the representative map and unit count before substantial editor work.
+
+Serve the SPA, `/api`, and `/socket.io` through one HTTPS origin. Proxy API and WebSocket traffic to NestJS and configure SPA route fallback for browser navigation. Same-origin deployment simplifies session cookies and avoids unnecessary cross-origin authentication configuration. Private asset reads require an authorized endpoint or short-lived signed URLs; a private storage bucket must not expose predictable public URLs.
+
 These choices are recommendations, not existing implementation. Relevant primary documentation supports the framework capabilities:
 
 - [React TypeScript support](https://react.dev/learn/typescript) and [Vite project templates](https://vite.dev/guide/).
@@ -157,6 +161,7 @@ Proposed default: all active player participants on both sides must consent to a
 - Lock the game row and validate expected revision before writing; concurrent final votes and admin requests can advance the turn only once.
 - Transition to the next configured side/phase, reset applicable allowances and statuses, clear consents, increment revision, and emit one event after commit.
 - Changing membership during an active game requires pausing, explicit roster revision, and invalidating pending consents. No silent exclusion of an unresponsive player.
+- If an eligible participant is suspended or removed, pause affected active games and invalidate pending consents atomically with their game access change. Do not auto-consent or auto-advance. An administrator must explicitly repair the roster and resume play. Use a consistent lock order for commands that affect several games.
 
 This voting policy is a proposal. If the desired system uses round-level voting, active-side-only agreement, captains, or continued play while voting, revise this section before implementing turns.
 
@@ -166,7 +171,7 @@ Implement a pure, versioned rules engine with an explicit typed input/output con
 
 The calculator must show participating unit versions, relevant modifiers, intermediate steps, rounding, final damage and casualties, and any missing or unsupported input. Unknown abilities must produce an explicit unsupported-rule error rather than a guessed result. A scenario preview does not mutate a game. If dice are involved, distinguish expected outcomes from sampled rolls; define rounding, casualty allocation, caps, simultaneous damage, and death/status rules using worked examples.
 
-Proposed MVP includes an explicit apply-result action for an authorized active-side player, subject to the final combat policy. The server reloads current participants, checks range/phase/action eligibility, recomputes results, generates and records any random rolls server-side, and atomically updates survivors/statuses. A stale preview must be rejected or refreshed before application. A command ID makes retries safe. Randomness is never accepted as authoritative client input.
+Optional extension, pending scope confirmation: an explicit apply-result action for an authorized active-side player. The calculator alone satisfies the currently requested scope. If application is included, the server reloads current participants, checks range/phase/action eligibility, recomputes results, generates and records any random rolls server-side, and atomically updates survivors/statuses. A stale preview must be rejected or refreshed before application. A command ID makes retries safe. Randomness is never accepted as authoritative client input.
 
 Coverage gate: create a matrix mapping every supported stat and ability to a formula step and a golden test case, including combinations and boundary cases. Textual rule changes that affect gameplay require a corresponding engine/configuration revision and tests before publication as supported rules. The combat formula is intentionally unspecified until the rules are supplied.
 
@@ -175,6 +180,8 @@ Coverage gate: create a matrix mapping every supported stat and ability to a for
 Illustrative resource groups: `/auth`, `/users`, `/rulesets`, `/units`, `/maps`, `/assets`, and `/games`. Game commands include move, consent, withdrawal, force-advance, combat preview, and combat application. Final endpoint contracts belong to implementation design.
 
 Each persisted game command carries `commandId` and `expectedRevision`. Execute permission checks and state-dependent validation inside a transaction that serializes mutations on the game row. Return structured errors such as `FORBIDDEN`, `STALE_REVISION`, `INVALID_MOVE`, `VOTING_PENDING`, and `UNSUPPORTED_RULE`. Store deduplication records and results in the same transaction; repeated IDs with different payloads are rejected.
+
+Deduplication keys are scoped by actor and game, with a canonical payload fingerprint covering command type, target, revision and inputs. Authenticate and verify current access before returning any stored result. Under the game lock, check for a completed matching command before checking the expected revision: a retry after a lost acknowledgment must return the original result even though that successful command advanced the revision. Only new commands undergo fresh revision and gameplay validation. Persist all game changes, results and events in that same transaction. Define deduplication retention before launch; retain records for at least the game's writable lifetime. All permission/membership writes that affect game legality must participate in the same game-lock protocol so revocation and moves have a definite order.
 
 Persist the event before commit; broadcast only after commit. Events carry `gameId`, monotonic revision, event type, and permitted payload. Clients ignore duplicates, detect revision gaps, and fetch an authoritative snapshot on reconnect or mismatch. A lightweight revision check on reconnect, tab focus, and periodic active-game refresh also repairs a missed final broadcast. The database remains the source of truth. Optimistic drag previews are allowed, but the client commits displayed state only after acknowledgment and can restore rejected previews.
 
@@ -205,7 +212,7 @@ Provisional acceptance envelope, to validate with a prototype: 10 concurrent gam
 3. Add admin catalogs, illustrated rules, and draft game setup with pinned versions.
 4. Deliver a shared board with authoritative movement and reconnect behavior.
 5. Add transactional turn control and mutual agreement.
-6. Deliver verified combat previews and separately authorized result application.
+6. Deliver verified combat previews; add result application only if separately included in scope.
 7. Complete security, accessibility, performance, deployment, and restore verification.
 
 These increments are sequenced in the backlog. No calendar estimate is reliable until the rule model and sample content are available.
@@ -218,7 +225,7 @@ These increments are sequenced in the backlog. No calendar estimate is reliable 
 | Square grid, hex grid, or free movement; what scale and distance rules? | No default until a sample map and movement rules exist. | Map calibration, pathfinding and movement legality. |
 | What is a turn: player, side, phase, or round? How does allowance reset? | Alternating side turns, fixed roster. | Turn and movement state transitions. |
 | Who must agree to a turn switch, and may play continue during consent? | All active participants, freeze on first consent. | Consent behavior and UI. |
-| Is combat only a calculator or should results update units? Who may apply? | Preview plus separate active-player apply action. | Combat write permissions and gameplay integration. |
+| Should calculator results also update units? Who may apply? | Calculator preview is required; persistent application is an optional extension. | Optional combat write permissions and gameplay integration. |
 | Is combat deterministic or dice-based; what are rounding and casualty rules? | No invented formula; use approved examples. | Combat engine and audit format. |
 | How many sides/players, and who owns or shares each unit? | Two sides, multiple players, explicit unit owner. | Setup and authorization model. |
 | Are terrain, stacking, line of sight, hidden information or facing required? | Add only those required by actual rules. | Movement, visibility and combat scope. |
