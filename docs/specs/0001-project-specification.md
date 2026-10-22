@@ -4,6 +4,12 @@ Date: 2026-10-22
 Status: Proposed; product assumptions require confirmation before dependent implementation  
 Related document: [Product backlog](../product-backlog.md)
 
+Decision update (2026-10-22): The project owner confirmed Konva with react-konva for the battle map. Administrator uploads provide image assets; Konva provides their interactive board presentation. The remaining stack recommendations and product assumptions retain their proposed status. See [development guidelines](../../AGENTS.md) for the requirement to explain important technical decisions during development.
+
+Implementation update (2026-10-22): T01 establishes the pnpm workspace, React/Vite shell, NestJS health endpoint and shared contract. See [workspace foundation decision](../decisions/0001-workspace-foundation.md) and [verification evidence](../verification/t01-workspace.md). Database integration, gameplay and production deployment remain planned work.
+
+Visual decision (2026-10-22): The owner approved the T01 palette and style for subsequent UI. See [interface style](../design/interface-style.md); its CSS tokens should be reused across forms, content pages, administration and board controls.
+
 ## 1. Purpose and scope
 
 Build a browser service for playing a turn-based wargame together. Players use a shared battle map and the service enforces agreed movement and combat rules. Administrators maintain game content and manage access.
@@ -29,6 +35,8 @@ Confirmed requirements from the initial request:
 The request does not define the actual wargame rules. This specification defines software boundaries and proposed defaults, not a new ruleset. The service must not claim correct movement or combat calculations until representative examples and rule coverage have been approved.
 
 ## 2. Product assumptions and boundaries
+
+Confirmed context (2026-10-22): This is a hobby service for the owner's group of friends, with no current plan for a commercial launch. Low recurring cost and manageable maintenance are design constraints. The initial deployment should fit on one host without mandatory paid application services. An exact monthly spending ceiling and the group's size remain undecided; no hosting price or resource guarantee is implied.
 
 Proposed MVP assumptions:
 
@@ -57,16 +65,18 @@ Use a TypeScript monorepo and a modular backend. Exact dependency versions will 
 | Backend | NestJS with REST endpoints and a Socket.IO gateway | Modules, dependency injection, guards, and validation organize accounts, content, games, and realtime delivery. | More structure than a minimal HTTP server; gateway authentication must be implemented deliberately. |
 | Persistence | PostgreSQL + Prisma ORM and reviewed SQL migrations | Relational membership, revisions, and transactional game commands fit a relational database. ORM improves routine CRUD and typed access. | Row locks and advanced constraints may need parameterized SQL; ORM major versions require compatibility checks. |
 | Authentication | Opaque server-side sessions in PostgreSQL; maintained Argon2id password library | Simple revocable login sessions fit username/password accounts and immediate access changes. | Requires session cleanup, CSRF protection, and session lookup; do not build cryptographic primitives. |
-| Assets | S3-compatible object storage; filesystem adapter for local development | Keep map, unit, and rules images out of database rows; retain metadata and access policy in PostgreSQL. | Storage backups and orphan cleanup need explicit handling. |
+| Assets | Persistent local filesystem in development and initial deployment; S3-compatible storage deferred | One host can store map, unit, and rules images without a separate storage service. Keep metadata and access policy in PostgreSQL. | Host disk is a single failure point; enforce disk limits and copy backups off-host. Revisit object storage only when needed. |
 | Rules content | Structured rich text with image references, e.g. Tiptap | Administrators can edit illustrated rules without writing HTML. | Sanitize and validate on the server; restrict supported content nodes. |
 | Tests | Vitest for shared rules and frontend; backend integration tests against PostgreSQL; Playwright for browser flows | Deterministic rule examples, real concurrency checks, and two-session browser tests cover the main failure modes. | Browser tests require seeded content and isolated databases. |
-| Deployment | Docker Compose initially, reverse proxy with TLS, one backend instance | A small deployment can host the SPA, API, WebSocket connections, database, and asset integration. | Operations and backups remain necessary; scale only after measured demand. |
+| Deployment | One modest VPS with Docker Compose, reverse proxy with TLS, one backend instance and local PostgreSQL | Keep hosting and maintenance concentrated on one machine; serve static frontend assets through the proxy. | One host has downtime during failures/maintenance; operations and off-host backups remain necessary. Size and price require measurement and a budget ceiling. |
 
 Next.js is a reasonable alternative if server-rendered public content becomes central, but the current application is dominated by authenticated board interaction. A dedicated NestJS process also gives realtime connections a clear lifecycle. Django or FastAPI would be reasonable with an established Python team; TypeScript is preferred here to share game-engine code. SVG could serve a small board; canvas is the proposed starting point for many interactive tokens. Neither Kubernetes, Redis, microservices, nor a full event-sourcing system is necessary for the first release.
 
 Implementation should introduce libraries when their feature slice needs them, rather than installing the entire proposed stack upfront. NestJS modules remain in one backend deployment. Prisma is a CRUD and migration tool, not the source of game-rule enforcement. Socket.IO improves update delivery; turn-based correctness still rests on database transactions and revisions. An initial board prototype must validate Konva against the representative map and unit count before substantial editor work.
 
-Serve the SPA, `/api`, and `/socket.io` through one HTTPS origin. Proxy API and WebSocket traffic to NestJS and configure SPA route fallback for browser navigation. Same-origin deployment simplifies session cookies and avoids unnecessary cross-origin authentication configuration. Private asset reads require an authorized endpoint or short-lived signed URLs; a private storage bucket must not expose predictable public URLs.
+Serve the SPA, `/api`, and `/socket.io` through one HTTPS origin. Proxy API and WebSocket traffic to NestJS and configure SPA route fallback for browser navigation. Same-origin deployment simplifies session cookies and avoids unnecessary cross-origin authentication configuration. Store uploads outside the public web root in a persistent mounted directory; authorize private reads through the backend. PostgreSQL data also uses persistent storage. Container replacement must not erase either dataset. If object storage is added later, use private buckets and authorized delivery or short-lived signed URLs.
+
+Budget baseline: no managed database, separate object-storage server, Redis, Kubernetes, paid monitoring, subscription authentication, CDN, or high-availability replicas are required for launch. Use local structured logs with rotation and simple health checks. Count hosting, optional domain registration, backup storage, and operator time when comparing deployment options. Free hosting tiers are not assumed to support persistent files and long-lived connections; verify restrictions before selecting one. Self-hosting on an existing machine is an alternative if its availability, connectivity and maintenance are acceptable. No provider has been selected or paid service authorized.
 
 These choices are recommendations, not existing implementation. Relevant primary documentation supports the framework capabilities:
 
@@ -75,6 +85,7 @@ These choices are recommendations, not existing implementation. Relevant primary
 - [NestJS WebSocket gateways](https://docs.nestjs.com/websockets/gateways) and [gateway guards](https://docs.nestjs.com/websockets/guards).
 - [Socket.IO rooms](https://socket.io/docs/v4/rooms/) for game-specific broadcasts; rooms are delivery groups, not authorization boundaries.
 - [Prisma transactions](https://www.prisma.io/docs/orm/fundamentals/transactions) and [PostgreSQL concurrency control](https://www.postgresql.org/docs/current/mvcc.html) for transactional state changes. Confirm the chosen Prisma version's transaction API before implementation.
+- [Docker persistent volumes](https://docs.docker.com/engine/storage/volumes/) for data that must survive container replacement; persistent storage is not itself an off-host backup.
 
 ## 4. Architecture and module boundaries
 
@@ -195,13 +206,13 @@ Proposed upload policy: PNG/JPEG/WebP only initially, validated by decoded conte
 
 ## 12. Quality, operations, and validation
 
-Provisional acceptance envelope, to validate with a prototype: 10 concurrent games, 8 connected players and 200 units per game; command acknowledgment p95 below 500 ms under normal deployment network conditions, measured separately from Internet latency. Target smooth board pan/zoom on an agreed desktop browser/device. These are planning targets, not measured capabilities or user-confirmed requirements.
+Provisional hobby-scale acceptance envelope, to validate with the actual group: one active game, 2–8 connected players and up to 200 units on the board. Multiple saved games remain supported; simultaneous active games are not an initial sizing requirement. Target responsive command handling and smooth pan/zoom on an agreed desktop device, with backend command processing p95 below 500 ms under the representative load (excluding network transit). These are planning targets, not measured capabilities or confirmed group size. Increase capacity only when actual usage calls for it.
 
 - Persist all accepted moves, turn transitions, combat applications, and content edits across process restarts.
 - Support current stable desktop Chrome, Firefox, and Edge; agree on the final browser matrix before release.
 - Provide visible loading, disconnected, conflict, empty, and validation-error states. Keyboard users can inspect/select units and choose a destination through DOM controls.
-- Add request IDs, structured logs, health/readiness endpoints, error reporting, and minimal metrics for command latency, rejection rates, and disconnects. Exclude credentials and tokens from logs.
-- Back up PostgreSQL and assets with coordinated retention. Proposed launch baseline: daily backups, 24-hour recovery point and 4-hour recovery time targets, validated by a restore drill and confirmed against hosting budget.
+- Add request IDs, structured logs with rotation and health/readiness endpoints. Inspect command latency, rejection rates and disconnects during validation; no separate monitoring platform is required. Exclude credentials and tokens from logs.
+- Back up PostgreSQL and assets together, retaining the references needed to restore them consistently. Proposed baseline: daily backups with seven daily copies on a separate device or storage service, plus a backup before migrations. Test restoration. Up to 24 hours of progress may be lost under a daily schedule; recovery is manual when the owner is available, with no four-hour recovery commitment or commercial uptime guarantee. Confirm retention and the off-host destination against the budget before deployment.
 - Test the pure engine with approved examples, API access control with cross-game attempts, and transactional races with real PostgreSQL. Browser tests use two player sessions and an administrator session.
 - Release gates include registration/login/logout, role enforcement, safe content publishing, a legal/illegal move pair, agreed and forced turn advancement, supported combat cases, reconnect convergence, and backup restoration.
 
@@ -231,6 +242,6 @@ These increments are sequenced in the backlog. No calendar estimate is reliable 
 | Are terrain, stacking, line of sight, hidden information or facing required? | Add only those required by actual rules. | Movement, visibility and combat scope. |
 | What may administrators override in active games? | Force turns; setup placement only outside active play. | Override workflows and audit requirements. |
 | Can users self-register publicly; who can see rules and games? | Self-registration, private game membership, signed-in rules. | Access and abuse controls. |
-| What UI language, hosting budget, assets, and expected scale? | Documentation in English; UI language undecided; small single-host deployment. | UI copy, capacity targets and deployment. |
+| What UI language, monthly spending ceiling, available host, backup destination, and group size? | Documentation in English; UI language undecided; budget hobby service for friends on one host, with local uploads and off-host backups. | UI copy, final capacity targets and deployment selection. |
 
 Record answers as revisions of this specification or focused follow-up specifications before building dependent behavior. Foundational work can proceed independently once implementation is requested.

@@ -1,10 +1,15 @@
 # Product Backlog
 
 Date: 2026-10-22  
-Status: Initial proposal; no items implemented  
+Status: B02 partially implemented (T01 complete); no complete product feature yet
+
 Architecture and requirement IDs: [Specification 0001](specs/0001-project-specification.md)
 
+This document tracks feature-level scope and acceptance criteria (B01–B23). The [implementation backlog](implementation-backlog.md) is the source of truth for task status, execution order, the first iteration, and open product decisions. Task completion does not close a parent feature until all of its acceptance criteria are satisfied.
+
 P0 = clarification or foundation that blocks implementation; P1 = required for the first playable release; P2 = proposed follow-up. Acceptance criteria below include proposed behavior from the specification; they are not evidence of user approval. Dependencies reference backlog IDs.
+
+Confirmed audience and cost constraint: a hobby service for the owner's friends, with no current commercial launch plan. Prefer one host, local persistent uploads, self-hosted PostgreSQL, and no mandatory paid application services. The monthly budget and actual group size must be established before selecting hosting. Commercial scale and availability are not MVP requirements.
 
 ## Discovery and foundation
 
@@ -20,7 +25,7 @@ P0 = clarification or foundation that blocks implementation; P1 = required for t
 
 | ID | Priority / source | Story or outcome | Acceptance criteria | Depends on |
 | --- | --- | --- | --- | --- |
-| B06 | P1 / R04, R10–R12 | Upload and reference game images safely. | Admin can upload supported decoded images within configured limits; invalid formats and oversized images fail safely; stored assets have metadata and access checks; referenced assets cannot be accidentally removed. | B05 |
+| B06 | P1 / R04, R10–R12 | Upload and reference game images safely. | Admin can upload supported decoded images within configured limits; invalid formats and oversized images fail safely; assets use persistent local storage outside the public web root, with metadata and authorized reads; referenced assets cannot be accidentally removed; deployment replacement preserves uploads; configure disk usage limits. | B05 |
 | B07 | P1 / R10 | As an administrator, create and edit unit definitions. | Form accepts name, image and supported movement/combat properties; invalid and unsupported abilities are rejected; publish creates a version; deployed units retain previous versions; used definitions can be archived. | B01, B06 |
 | B08 | P1 / R11 | As an administrator, add playable maps. | Upload background, set dimensions/topology/scale and required terrain/obstacles; preview alignment; invalid calibration prevents publication; versioned maps remain available to existing games. | B01, B06 |
 | B09 | P1 / R04, R12 | Read and maintain illustrated rules. | Admin can save, preview and publish text with images; players can read published content; scripts and unsafe content do not execute; drafts stay hidden; gameplay-changing publications link to a supported engine version. | B05, B06; B01 for executable rules |
@@ -55,7 +60,7 @@ P0 = clarification or foundation that blocks implementation; P1 = required for t
 | ID | Priority / source | Story or outcome | Acceptance criteria | Depends on |
 | --- | --- | --- | --- | --- |
 | B20 | P1 / technical | Verify a complete multiplayer game flow. | Automated tests cover approved rules, object authorization, simultaneous move/turn commands, lost-acknowledgment retries, voter suspension and reconnects; a two-player plus admin browser scenario passes with representative content. Test duplicate combat application if B19 is included. | B03–B18; B19 only if included |
-| B21 | P1 / operational | Deploy and recover the service. | TLS and secure secrets configuration, migrations, health checks, logs, image/database backups and retention are documented; restore drill succeeds; no credentials appear in logs; agreed capacity envelope is measured. | B20 |
+| B21 | P1 / operational | Deploy and recover the service on a hobby budget. | Confirm spending ceiling and host choice; document recurring cost categories; one-host deployment provides TLS, secure secrets, migrations, health checks and rotated logs; database/uploads survive container replacement; coordinated off-host backups and retention are documented and a restore drill succeeds; no credentials appear in logs; measure representative one-game load; no mandatory paid monitoring or managed database. | B20 |
 | B22 | P1 / usability | Make core gameplay understandable and accessible. | Clear loading/disconnect/conflict errors; keyboard inspection and destination controls; safe confirmation of destructive admin operations; responsive essential forms; chosen browser matrix verified. | B12–B18; B19 only if included |
 | B23 | P2 / follow-up | Expand content and gameplay after MVP feedback. | Individually scope spectator access, replay/undo, advanced editors, fog of war, line of sight, extra sides, or public discovery; promote rules-required features to P1 before release. | B01, user prioritization |
 
