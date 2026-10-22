@@ -4,11 +4,15 @@ Date: 2026-10-22
 Status: Proposed; product assumptions require confirmation before dependent implementation  
 Related document: [Product backlog](../product-backlog.md)
 
+Document role: Original product requirements and proposed architecture. For the implemented stack and present state, start with [current project context](0002-project-context.md), then [T01 changes](0003-t01-workspace.md) and [T02 changes](0004-t02-local-database.md). Proposed features below are not completion claims.
+
 Decision update (2026-10-22): The project owner confirmed Konva with react-konva for the battle map. Administrator uploads provide image assets; Konva provides their interactive board presentation. The remaining stack recommendations and product assumptions retain their proposed status. See [development guidelines](../../AGENTS.md) for the requirement to explain important technical decisions during development.
 
 Implementation update (2026-10-22): T01 establishes the pnpm workspace, React/Vite shell, NestJS health endpoint and shared contract. See [workspace foundation decision](../decisions/0001-workspace-foundation.md) and [verification evidence](../verification/t01-workspace.md). Database integration, gameplay and production deployment remain planned work.
 
 Visual decision (2026-10-22): The owner approved the T01 palette and style for subsequent UI. See [interface style](../design/interface-style.md); its CSS tokens should be reused across forms, content pages, administration and board controls.
+
+Database update (2026-10-22): T02 adds local PostgreSQL 18.6, Prisma 7.10.1, a domain-free baseline migration, validated private environment settings and database readiness. See [local database decision](../decisions/0002-local-database.md) and [T02 verification](../verification/t02-local-database.md). Account and game schemas remain feature work; no hosting service is introduced.
 
 ## 1. Purpose and scope
 

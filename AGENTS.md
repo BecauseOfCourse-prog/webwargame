@@ -2,6 +2,14 @@
 
 These instructions apply to the entire repository.
 
+## Project context and specifications
+
+Start with [current project context](docs/specs/0002-project-context.md) and the active task in [the implementation backlog](docs/implementation-backlog.md). The [T01](docs/specs/0003-t01-workspace.md) and [T02](docs/specs/0004-t02-local-database.md) change specifications describe implemented increments; Specification 0001 retains the original plan. Keep implemented behavior distinct from proposed features. Update the current context and affected incremental specification when implementation changes, linking decisions and actual verification evidence.
+
+Mandatory workflow: follow [Specification 0005](docs/specs/0005-development-documentation.md). Every coherent change must have a change specification, including features, bug fixes, refactors, configuration/dependency/tooling changes and development-rule changes. Create a numbered specification for a new task/change; keep that task's specification current through implementation and review corrections. Do not create a separate document for every edit within the same change.
+
+Before declaring work complete, update the general project context to the resulting state, link the change specification from the backlog/completion evidence and verify documentation links. If a change only affects documentation or policy, record a short maintenance note in the general context rather than inventing an application change. Missing or stale change specifications/general context mean the task is not Done. Include these documentation changes with the implementation when committing; a decision record or review report does not substitute for a change specification.
+
 ## Budget and audience
 
 The service is for the owner's group of friends. A commercial launch is not currently planned. Optimize for low recurring cost, simple maintenance, and a working game rather than speculative growth.

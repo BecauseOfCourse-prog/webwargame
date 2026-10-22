@@ -2,7 +2,7 @@
 
 Updated: 2026-10-22
 
-Status: T01 complete; T02 ready; remaining implementation tasks have not started
+Status: T01–T02 complete; T03 ready; remaining implementation tasks have not started
 
 Scope and acceptance criteria: [Product backlog](product-backlog.md)
 
@@ -28,6 +28,8 @@ Priority follows the parent feature: P0 discovery/foundation, P1 first playable 
 This is a low-cost hobby project for friends. No hosting purchase, paid service, implementation, or deployment is authorized merely by writing a task. Konva is confirmed. Other proposed technology choices should be explained when introduced, as required by AGENTS.md.
 
 All UI tasks follow the owner-approved [interface style](design/interface-style.md) and shared CSS tokens. T04 must verify that Ctrl+C in the owner's Windows terminal stops all development child processes and permits a clean restart; the earlier automated shutdown left watchers running and is recorded as an open verification gap in the [T01 code review](reviews/0002-t01-code-review.md).
+
+Current technical context: [project overview](specs/0002-project-context.md), [T01 changes](specs/0003-t01-workspace.md) and [T02 changes](specs/0004-t02-local-database.md). The [combined review](reviews/0003-t01-t02-code-review.md) records the two fixed T02 findings and regression checks; these corrections do not mark T03 or T04 complete.
 
 ## Milestones and visible outcomes
 
@@ -62,7 +64,7 @@ Calculator result application is not required for the first release. Discuss its
 
 ## First iteration: M0 local foundation
 
-T01 is complete. Next take T02, T03 and T04 in order. No paid infrastructure or actual game-rule implementation is needed for this iteration. While it proceeds, collect Q07/Q08 for accounts and Q01–Q06 for gameplay. M1 is the next iteration, not part of the M0 completion claim.
+T01–T02 are complete. Next take T03 and T04 in order. No paid infrastructure or actual game-rule implementation is needed for this iteration. While it proceeds, collect Q07/Q08 for accounts and Q01–Q06 for gameplay. M1 is the next iteration, not part of the M0 completion claim.
 
 ### T01 — Create the workspace and minimal application skeleton
 
@@ -74,7 +76,7 @@ T01 is complete. Next take T02, T03 and T04 in order. No paid infrastructure or 
 
 ### T02 — Provide persistent local PostgreSQL and validated configuration
 
-- Parent: B02. Priority: P0. Status: Ready. Depends on: T01.
+- Parent: B02. Priority: P0. Status: Done. Depends on: T01. Evidence: [T02 verification](verification/t02-local-database.md).
 - Deliver: local Compose database, persistent volume, `.env.example` without credentials, ignored local secret files, Prisma setup and a first migration convention. Local development data is not production data.
 - Acceptance: backend connects using validated configuration; an invalid/missing required setting fails with a useful error; migration command works against a clean database; a disposable persistence check survives container replacement without deleting volumes. No speculative game schema is required.
 - Verification: clean database initialization and persistence demonstration using disposable local data.
@@ -82,7 +84,7 @@ T01 is complete. Next take T02, T03 and T04 in order. No paid infrastructure or 
 
 ### T03 — Add repeatable checks and a minimal CI workflow
 
-- Parent: B02. Priority: P0. Status: Planned. Depends on: T01, T02.
+- Parent: B02. Priority: P0. Status: Ready. Depends on: T01, T02.
 - Deliver: root build/type/lint commands and a repository CI workflow using the lockfile. Add test tooling with the first meaningful tests rather than filler tests of empty scaffolding.
 - Acceptance: the same commands run locally and in CI without production secrets; an isolated local exercise with an intentional type error makes the type check fail; the restored valid tree passes. Include tests/migrations in CI as corresponding features arrive.
 - Verification: successful local checks and CI configuration inspection; record an actual CI run when remote execution is available, without claiming it ran locally.
@@ -168,10 +170,13 @@ T35–T37 may be prepared before final browser tests; actual deployment follows 
 
 ## Completion evidence and maintenance
 
-T01 is Done. B02 and M0 are still incomplete: database setup, CI/lint and full onboarding remain T02–T04. No account, content-management or gameplay feature is complete yet.
+T01 and T02 are Done. B02 and M0 are still incomplete: CI/lint and full onboarding remain T03–T04. No account, content-management or gameplay feature is complete yet.
 
 For each completed task, add a short entry below with task ID, date, commit/artifact, checks performed and material limitations. Update affected feature criteria, decisions and specification in the same change. Move a dependent task to Ready only after all prerequisites and named inputs have been satisfied. If a task combines independently deliverable work, split it and preserve the original ID as the parent reference.
 
+Required for every coherent change: create/update its numbered change specification, edit [general context](specs/0002-project-context.md) after final corrections, and link specification plus verification evidence from completion records. This also applies to bug fixes, refactors, configuration/dependency/tooling and documentation-policy changes. Do not mark a task Done or report completion until these documents reflect the result. See [Specification 0005](specs/0005-development-documentation.md); historical evidence must not be relabeled as a newly run check.
+
 | Task | Completed | Commit or artifact | Verification and limitations |
 | --- | --- | --- | --- |
-| T01 | 2026-10-22 | [Verification report and source links](verification/t01-workspace.md) | Clean frozen installation, package resolution, typecheck/build, dev/proxy requests, compiled frontend/API, browser retry, unavailable-server and recovery checks passed. No database or gameplay implemented. |
+| T01 | 2026-10-22 | [Change specification](specs/0003-t01-workspace.md); [verification and source links](verification/t01-workspace.md) | Clean frozen installation, package resolution, typecheck/build, dev/proxy requests, compiled frontend/API, browser retry, unavailable-server and recovery checks passed. No database or gameplay implemented. |
+| T02 | 2026-10-22 | [Change specification](specs/0004-t02-local-database.md); [verification and source links](verification/t02-local-database.md) | Clean credential-free build, initial seven configuration/startup tests, migration history, Prisma connection, retained marker, outage/recovery and secret checks passed. Review follow-up passed ten configuration/local-target tests and one silent-network test. No domain models or backup system implemented. |

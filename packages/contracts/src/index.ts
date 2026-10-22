@@ -5,6 +5,11 @@ export interface HealthResponse {
   service: 'wargame-api';
 }
 
+export interface ReadinessResponse {
+  status: 'ready';
+  database: 'ok';
+}
+
 export function isHealthResponse(value: unknown): value is HealthResponse {
   return (
     typeof value === 'object' &&

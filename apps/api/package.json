@@ -4,21 +4,32 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "nest start --watch",
-    "build": "nest build",
+    "dev": "pnpm db:generate && nest start --watch",
+    "build": "pnpm db:generate && nest build",
     "start": "node --enable-source-maps dist/main.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "pnpm db:generate && tsc --noEmit",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:status": "prisma migrate status",
+    "db:verify": "node scripts/verify-database.mjs",
+    "test:config": "node --test test/environment.test.mjs test/startup.test.mjs test/local-database-target.test.mjs",
+    "test:database": "node --test test/readiness.integration.test.mjs"
   },
   "dependencies": {
     "@nestjs/common": "12.2.0",
     "@nestjs/core": "12.2.0",
     "@nestjs/platform-express": "12.2.0",
+    "@prisma/adapter-pg": "7.10.1",
+    "@prisma/client": "7.10.1",
     "@webwargame/contracts": "workspace:*",
     "reflect-metadata": "0.2.2",
-    "rxjs": "7.8.2"
+    "rxjs": "7.8.2",
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@nestjs/cli": "12.0.10",
-    "@types/node": "22.20.5"
+    "@types/node": "22.20.5",
+    "prisma": "7.10.1"
   }
 }

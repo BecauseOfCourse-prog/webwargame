@@ -3,6 +3,10 @@ packages:
   - packages/*
 
 strictPeerDependencies: true
+saveExact: true
+engineStrict: true
 
-ignoredBuiltDependencies:
-  - '@nestjs/core'
+allowBuilds:
+  '@nestjs/core': false
+  '@prisma/engines': true
+  prisma: true

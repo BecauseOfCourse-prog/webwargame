@@ -8,6 +8,16 @@
     "pnpm": "11.25.0"
   },
   "scripts": {
+    "env:init": "node scripts/init-local-env.mjs",
+    "db:up": "docker compose up -d --wait postgres",
+    "db:down": "docker compose down",
+    "db:generate": "pnpm --filter @webwargame/api db:generate",
+    "db:migrate": "pnpm --filter @webwargame/api db:migrate",
+    "db:migrate:dev": "pnpm --filter @webwargame/api db:migrate:dev",
+    "db:status": "pnpm --filter @webwargame/api db:status",
+    "db:verify": "pnpm --filter @webwargame/api db:verify",
+    "test:config": "pnpm --filter @webwargame/api test:config",
+    "test:database": "pnpm --filter @webwargame/api test:database",
     "build:packages": "pnpm --filter \"./packages/*\" run build",
     "dev": "pnpm build:packages && pnpm --parallel -r run dev",
     "build": "pnpm -r run build",

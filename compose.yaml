@@ -1,0 +1,24 @@
+name: webwargame-local
+
+services:
+  postgres:
+    image: postgres:18.6-bookworm
+    restart: "no"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?Run pnpm env:init first}
+      POSTGRES_DB: ${POSTGRES_DB:?Run pnpm env:init first}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run pnpm env:init first}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+    stop_grace_period: 15s
+
+volumes:
+  postgres-data:

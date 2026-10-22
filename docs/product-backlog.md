@@ -1,7 +1,7 @@
 # Product Backlog
 
 Date: 2026-10-22  
-Status: B02 partially implemented (T01 complete); no complete product feature yet
+Status: B02 partially implemented (T01–T02 complete); no complete product feature yet
 
 Architecture and requirement IDs: [Specification 0001](specs/0001-project-specification.md)
 
@@ -77,3 +77,5 @@ Each slice should include its own relevant tests and usable UI; final verificati
 ## Definition of done
 
 An item is done when its acceptance criteria pass, required server authorization and validation exist, meaningful automated checks cover its risks, related documentation is current, and the behavior can be demonstrated with representative data. A first playable release includes every P1 item. B19 is optional and does not block that release unless explicitly promoted into scope. Every R01–R13 requirement must be traceable to passing acceptance evidence. Open formula/topology/turn-policy questions block dependent completion claims.
+
+Mandatory documentation gate: every coherent change has a current change specification and a corresponding edit to [general project context](specs/0002-project-context.md), following [Specification 0005](specs/0005-development-documentation.md). This includes fixes, refactors, configuration/dependency/tooling and policy changes. Completion evidence must link the specification and actual verification; implementation and documentation are committed together when a commit is requested. Missing/stale specifications or general context block Done status.
