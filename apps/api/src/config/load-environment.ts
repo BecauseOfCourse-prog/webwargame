@@ -6,6 +6,7 @@ export function loadLocalEnvironment(): void {
     loadEnvFile(new URL('../../../../.env', import.meta.url));
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      // eslint-disable-next-line preserve-caught-error -- Keep raw environment-file details out of startup logs.
       throw new Error('Could not read the root .env file. Check its path and permissions.');
     }
     // Deployments and tests can provide environment variables without an .env file.

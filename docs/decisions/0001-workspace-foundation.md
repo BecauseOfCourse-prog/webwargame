@@ -4,6 +4,8 @@ Date: 2026-10-22
 
 Status: Implemented for T01; broader gameplay and hosting decisions remain open.
 
+Runtime follow-up (2026-10-23): the original runtime range/reference below is superseded by [the verified T03 correction](../specs/0006-t03-repeatable-checks.md#8-runtime-correction--2026-10-23): Node `^22.22.3 || ^24.15.0`, reference 22.22.3. The original rationale and verification remain historical.
+
 ## Context
 
 The first task needs a reproducible frontend/backend skeleton, resolvable shared packages, and a real browser-to-server request. It must remain small and inexpensive, and leave database and game-rule design to their own tasks.

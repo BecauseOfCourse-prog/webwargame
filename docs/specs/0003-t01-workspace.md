@@ -8,6 +8,8 @@ Status: Implemented; includes the approved style follow-up. Parent: B02. Task: T
 
 Before T01 the repository held planning documents only. T01 establishes a locally runnable frontend/backend, resolvable shared packages and a real browser-to-API request. It adds no registration, database models, board, movement, turns or combat formulas. [T02](0004-t02-local-database.md) subsequently adds database-dependent API startup; do not use T01's historical database-free startup as the current run instructions.
 
+Runtime follow-up (2026-10-23): [the T03 review correction](0006-t03-repeatable-checks.md#8-runtime-correction--2026-10-23) supersedes the original runtime reference with Node 22.22.3 and narrows supported ranges to `^22.22.3 || ^24.15.0`, matching locked development dependencies. T01 verification remains historical; current instructions live in README/current context.
+
 ## 2. Structural changes
 
 | Artifact | Responsibility |

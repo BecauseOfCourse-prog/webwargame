@@ -1,7 +1,7 @@
 # Product Backlog
 
-Date: 2026-10-22  
-Status: B02 partially implemented (T01–T02 complete); no complete product feature yet
+Date: 2026-10-23
+Status: B02 partially implemented (T01–T03 complete, including runtime correction; T04 remains); no complete product feature yet
 
 Architecture and requirement IDs: [Specification 0001](specs/0001-project-specification.md)
 

@@ -12,6 +12,7 @@ Built for the owner's group of friends, with no current commercial launch plan. 
 - [Current project context](docs/specs/0002-project-context.md): start here for the implemented stack, architecture, status and open decisions.
 - [T01 change specification](docs/specs/0003-t01-workspace.md): workspace, browser/API skeleton, contracts and style follow-up.
 - [T02 change specification](docs/specs/0004-t02-local-database.md): local database, configuration, migrations and readiness behavior.
+- [T03 change specification](docs/specs/0006-t03-repeatable-checks.md): root checks, ESLint and minimal GitHub Actions CI.
 - [Initial project specification](docs/specs/0001-project-specification.md): proposed stack, architecture, domain model, game-state consistency, and decisions requiring clarification.
 - [Product backlog](docs/product-backlog.md): traceable requirements, priorities, acceptance criteria, and delivery sequence.
 - [Implementation backlog](docs/implementation-backlog.md): actionable tasks, current statuses, open decisions, and the first development iteration.
@@ -22,14 +23,18 @@ Built for the owner's group of friends, with no current commercial launch plan. 
 - [Local database decision](docs/decisions/0002-local-database.md): PostgreSQL, configuration, Prisma and migration choices for T02.
 - [T02 verification](docs/verification/t02-local-database.md): database initialization, startup failures and container-replacement persistence checks.
 - [Combined T01–T02 code review](docs/reviews/0003-t01-t02-code-review.md): confirmed findings, fixes and regression evidence.
+- [T03 verification](docs/verification/t03-repeatable-checks.md): frozen installation, credential-free checks, intentional type failure and CI inspection.
+- [T03 code review](docs/reviews/0004-t03-code-review.md): CI Node/dependency mismatch, correction and verification under the selected runtime.
 
-All project documentation is in English. T01 provides a browser shell and a real backend health request; T02 adds PostgreSQL, Prisma, migration history and validated environment configuration. Accounts, board interaction and game rules are not implemented yet. Initial interface copy is Russian for the owner's walkthrough; Q08 still governs the eventual UI language/device scope.
+All project documentation is in English. T01 provides a browser shell and a real backend health request; T02 adds PostgreSQL, Prisma, migration history and validated environment configuration; T03 adds repeatable checks and a repository CI workflow. Accounts, board interaction and game rules are not implemented yet. Initial interface copy is Russian for the owner's walkthrough; Q08 still governs the eventual UI language/device scope.
 
 The initial scope includes username/password accounts, administrator and player roles, illustrated rules, a shared interactive battle map, movement validation, turn management, unit inspection, a combat calculator, and administration of content and permissions.
 
 ## Run locally
 
-Prerequisites: Node.js 22.13+ within the 22.x line (reference version in `.node-version`: 22.22.0), or Node.js 24.x; pnpm 11.25.0; Docker with Compose and a running Linux-container engine. Docker Desktop is the verified local Windows setup. No global NestJS/Prisma CLI, separately installed PostgreSQL or paid service is needed.
+Prerequisites: Node.js 22.22.3+ within the 22.x line (reference version in `.node-version`: 22.22.3), or Node.js 24.15.0+ within the 24.x line; pnpm 11.25.0; Docker with Compose and a running Linux-container engine. Docker Desktop is the verified local Windows setup. No global NestJS/Prisma CLI, separately installed PostgreSQL or paid service is needed.
+
+Use the reference Node version before installation; the old 22.22.0 reference is rejected by locked development dependencies. A pnpm wrapper can use a different Node runtime from the shell. For troubleshooting, compare `node --version` with `pnpm exec node -p "process.env.npm_config_user_agent"` (whose `node/v...` entry identifies pnpm's host runtime). The corrected 22.22.3 reference passed clean frozen installation and all root checks with both runtimes explicitly verified. See [the review correction](docs/reviews/0004-t03-code-review.md#4-correction-and-verification--2026-10-23). This verification used a portable runtime; it did not replace the owner's system Node installation.
 
 From the repository root:
 
@@ -81,10 +86,25 @@ The baseline migration only establishes the `public` schema and migration histor
 
 ## Build and inspect
 
+Run the complete database-independent check sequence from the root:
+
 ```powershell
-pnpm typecheck
-pnpm build
+pnpm check
 ```
+
+| Command | Purpose |
+| --- | --- |
+| `pnpm lint` | ESLint correctness rules for maintained JS/TS, including React Hooks; any warning fails. |
+| `pnpm typecheck` | Build shared packages and check all workspace TypeScript, including Prisma client generation. |
+| `pnpm build` | Build shared packages, compiled API and browser assets. |
+| `pnpm test` | Run the ten existing configuration/startup/local-target tests against compiled API output; build first when running separately. |
+| `pnpm check` | Run lint, typecheck, build and `test` in that order; no `.env`, production secrets or running database required. |
+
+After building, `pnpm test:database` additionally checks readiness during a real PostgreSQL network interruption. It requires the local database and configuration described above. `pnpm db:verify` remains a separate, opt-in container-replacement persistence check.
+
+[GitHub Actions CI](.github/workflows/ci.yml) runs on pushes, pull requests and manual dispatch. It installs with the frozen lockfile, reads Node from `.node-version` and pnpm from `packageManager`, and runs the same `pnpm check`. A disposable PostgreSQL service then receives committed migrations twice (the second run must be safe), migration status and `pnpm test:database`. Its declared test credentials are confined to the job; no production secrets or owner's `.env` are needed. The workflow does not deploy or recreate the owner's local containers. Action references are pinned to reviewed commit SHAs. No paid runner or plan is selected; available hosted-runner minutes depend on the repository/account. Local checks and configuration inspection passed; no remote CI success is claimed in T03 evidence.
+
+ESLint excludes installed dependencies, compiled output, the generated Prisma client, coverage and `.local` scratch files. Its scope is JavaScript/TypeScript correctness and the fundamental React Hooks rules; it does not enforce CSS/Markdown formatting or validate game rules. Meaningful feature tests should extend the existing commands as features arrive.
 
 Shared packages build before their consumers. Build artifacts go into each package's ignored `dist` directory. To inspect the compiled application, run these commands in two terminals, after building:
 
@@ -98,7 +118,7 @@ pnpm --filter @webwargame/api start
 pnpm --filter @webwargame/web preview
 ```
 
-Open [the built frontend preview](http://127.0.0.1:4173). The API requires local settings and PostgreSQL to be running. Vite preview is a local build inspection tool; production deployment will use the reverse proxy described in the specification. Lint/CI and a full onboarding walkthrough remain T03–T04.
+Open [the built frontend preview](http://127.0.0.1:4173). The API requires local settings and PostgreSQL to be running. Vite preview is a local build inspection tool; production deployment will use the reverse proxy described in the specification. The full onboarding walkthrough and Windows development-child shutdown check remain T04.
 
 ## Workspace layout
 

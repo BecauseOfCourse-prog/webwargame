@@ -1,8 +1,8 @@
 # Implementation Backlog
 
-Updated: 2026-10-22
+Updated: 2026-10-23
 
-Status: T01–T02 complete; T03 ready; remaining implementation tasks have not started
+Status: T01–T03 complete, including the runtime review correction; T04 ready; remaining implementation tasks have not started
 
 Scope and acceptance criteria: [Product backlog](product-backlog.md)
 
@@ -29,7 +29,7 @@ This is a low-cost hobby project for friends. No hosting purchase, paid service,
 
 All UI tasks follow the owner-approved [interface style](design/interface-style.md) and shared CSS tokens. T04 must verify that Ctrl+C in the owner's Windows terminal stops all development child processes and permits a clean restart; the earlier automated shutdown left watchers running and is recorded as an open verification gap in the [T01 code review](reviews/0002-t01-code-review.md).
 
-Current technical context: [project overview](specs/0002-project-context.md), [T01 changes](specs/0003-t01-workspace.md) and [T02 changes](specs/0004-t02-local-database.md). The [combined review](reviews/0003-t01-t02-code-review.md) records the two fixed T02 findings and regression checks; these corrections do not mark T03 or T04 complete.
+Current technical context: [project overview](specs/0002-project-context.md), [T01 changes](specs/0003-t01-workspace.md), [T02 changes](specs/0004-t02-local-database.md) and [T03 changes](specs/0006-t03-repeatable-checks.md). The [combined review](reviews/0003-t01-t02-code-review.md) records the two fixed T02 findings and regression checks. T03 has its own [verification evidence](verification/t03-repeatable-checks.md); the P1 finding in [Review 0004](reviews/0004-t03-code-review.md) is corrected and verified. T04 is not complete.
 
 ## Milestones and visible outcomes
 
@@ -64,7 +64,7 @@ Calculator result application is not required for the first release. Discuss its
 
 ## First iteration: M0 local foundation
 
-T01–T02 are complete. Next take T03 and T04 in order. No paid infrastructure or actual game-rule implementation is needed for this iteration. While it proceeds, collect Q07/Q08 for accounts and Q01–Q06 for gameplay. M1 is the next iteration, not part of the M0 completion claim.
+T01–T03 are complete, including the CI-runtime correction. Next take T04. No paid infrastructure or actual game-rule implementation is needed for this iteration. While it proceeds, collect Q07/Q08 for accounts and Q01–Q06 for gameplay. M1 is the next iteration, not part of the M0 completion claim.
 
 ### T01 — Create the workspace and minimal application skeleton
 
@@ -84,15 +84,16 @@ T01–T02 are complete. Next take T03 and T04 in order. No paid infrastructure o
 
 ### T03 — Add repeatable checks and a minimal CI workflow
 
-- Parent: B02. Priority: P0. Status: Ready. Depends on: T01, T02.
+- Parent: B02. Priority: P0. Status: Done (including review correction). Depends on: T01, T02.
 - Deliver: root build/type/lint commands and a repository CI workflow using the lockfile. Add test tooling with the first meaningful tests rather than filler tests of empty scaffolding.
 - Acceptance: the same commands run locally and in CI without production secrets; an isolated local exercise with an intentional type error makes the type check fail; the restored valid tree passes. Include tests/migrations in CI as corresponding features arrive.
 - Verification: successful local checks and CI configuration inspection; record an actual CI run when remote execution is available, without claiming it ran locally.
 - Learning note: explain what CI checks and which behavior still needs runtime or browser verification.
+- Completion: [change specification](specs/0006-t03-repeatable-checks.md), [verification](verification/t03-repeatable-checks.md) and [Review 0004](reviews/0004-t03-code-review.md). The review's P1 mismatch is fixed by reference Node 22.22.3 and supported ranges `^22.22.3 || ^24.15.0`. Fresh frozen installation as the first dependency operation, unchanged lockfile and full checks/ten tests passed with both pnpm and child commands on the selected runtime. After Docker restart, final clean/idempotent migration/status and network-failure tests also passed under Node 22.22.3 in a disposable database. Remote CI had not run at the pre-commit checkpoint.
 
 ### T04 — Document and demonstrate the local workflow
 
-- Parent: B02. Priority: P0. Status: Planned. Depends on: T01–T03.
+- Parent: B02. Priority: P0. Status: Ready. Depends on: T01–T03.
 - Deliver: setup instructions covering prerequisites, environment configuration, start/stop, migrations and checks, plus troubleshooting for occupied ports and database connection errors.
 - Acceptance: following instructions from a clean checkout leads to the browser/API health demonstration; no undocumented global dependency or paid account is needed. Document supported runtime versions and distinguish local setup from a future production deployment.
 - Verification: repeat the documented sequence; record outcomes. Mark B02 Done only when all B02 acceptance criteria are satisfied.
@@ -170,7 +171,7 @@ T35–T37 may be prepared before final browser tests; actual deployment follows 
 
 ## Completion evidence and maintenance
 
-T01 and T02 are Done. B02 and M0 are still incomplete: CI/lint and full onboarding remain T03–T04. No account, content-management or gameplay feature is complete yet.
+T01–T03 are Done. T03's P1 runtime correction passed fresh-install and full-check verification on 2026-10-23, restoring completion after review. Prior local/database evidence remains separately dated. B02/M0 still require T04's full local onboarding/shutdown demonstration. No remote CI success is claimed. No account, content-management or gameplay feature is complete yet.
 
 For each completed task, add a short entry below with task ID, date, commit/artifact, checks performed and material limitations. Update affected feature criteria, decisions and specification in the same change. Move a dependent task to Ready only after all prerequisites and named inputs have been satisfied. If a task combines independently deliverable work, split it and preserve the original ID as the parent reference.
 
@@ -180,3 +181,4 @@ Required for every coherent change: create/update its numbered change specificat
 | --- | --- | --- | --- |
 | T01 | 2026-10-22 | [Change specification](specs/0003-t01-workspace.md); [verification and source links](verification/t01-workspace.md) | Clean frozen installation, package resolution, typecheck/build, dev/proxy requests, compiled frontend/API, browser retry, unavailable-server and recovery checks passed. No database or gameplay implemented. |
 | T02 | 2026-10-22 | [Change specification](specs/0004-t02-local-database.md); [verification and source links](verification/t02-local-database.md) | Clean credential-free build, initial seven configuration/startup tests, migration history, Prisma connection, retained marker, outage/recovery and secret checks passed. Review follow-up passed ten configuration/local-target tests and one silent-network test. No domain models or backup system implemented. |
+| T03 | 2026-10-23, after review correction | [Change specification](specs/0006-t03-repeatable-checks.md); [verification](verification/t03-repeatable-checks.md); [Review 0004](reviews/0004-t03-code-review.md) | Earlier intentional TS2322/restoration and isolated PostgreSQL checks passed. P1 runtime correction passed clean frozen installation and full lint/type/build/ten tests under actual Node 22.22.3 for pnpm and child commands, preserving the lockfile. No unresolved review finding. Remote CI has not run; no gameplay/onboarding-completion claim. |
