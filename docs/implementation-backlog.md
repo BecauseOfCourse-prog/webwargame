@@ -2,7 +2,7 @@
 
 Updated: 2026-10-24
 
-Status: T01–T04 and B02/M0 complete; remaining implementation tasks have not started
+Status: T01–T05 and B02/M0 complete; T06 awaits session policy input
 
 Scope and acceptance criteria: [Product backlog](product-backlog.md)
 
@@ -29,7 +29,7 @@ This is a low-cost hobby project for friends. No hosting purchase, paid service,
 
 All UI tasks follow the owner-approved [interface style](design/interface-style.md) and shared CSS tokens. T04 verified that Ctrl+C in the owner's Windows terminal stops all development child processes and permits a clean restart. Its [evidence](verification/t04-local-workflow.md) closes the historical verification gap recorded in the [T01 code review](reviews/0002-t01-code-review.md); that earlier review remains historical.
 
-Current technical context: [project overview](specs/0002-project-context.md), [T01 changes](specs/0003-t01-workspace.md), [T02 changes](specs/0004-t02-local-database.md), [T03 changes](specs/0006-t03-repeatable-checks.md) and [T04 changes](specs/0007-t04-local-workflow.md). The [combined review](reviews/0003-t01-t02-code-review.md) records the two fixed T02 findings and regression checks. T03 has its own [verification evidence](verification/t03-repeatable-checks.md); the P1 finding in [Review 0004](reviews/0004-t03-code-review.md) is corrected and verified.
+Current technical context: [project overview](specs/0002-project-context.md), [T01 changes](specs/0003-t01-workspace.md), [T02 changes](specs/0004-t02-local-database.md), [T03 changes](specs/0006-t03-repeatable-checks.md), [T04 changes](specs/0007-t04-local-workflow.md) and [T05 changes](specs/0008-t05-registration.md). The [combined review](reviews/0003-t01-t02-code-review.md) records the two fixed T02 findings and regression checks. T03 has its own [verification evidence](verification/t03-repeatable-checks.md); the P1 finding in [Review 0004](reviews/0004-t03-code-review.md) is corrected and verified.
 
 ## Milestones and visible outcomes
 
@@ -45,7 +45,7 @@ Current technical context: [project overview](specs/0002-project-context.md), [T
 
 ## Open product decisions and required inputs
 
-All entries below are Open. The owner supplies game intent/content; the developer explains alternatives and records the answer in the specification and affected tasks. Proposed defaults are not approved rules. Resolve only the decisions needed by the upcoming slice; do not block local foundation work on hosting or combat questions.
+Entries remain Open unless explicitly resolved below. The owner supplies game intent/content; the developer explains alternatives and records the answer in the specification and affected tasks. Proposed defaults are not approved rules. Resolve only the decisions needed by the upcoming slice; do not block local foundation work on hosting or combat questions.
 
 | ID / parent | Decision or input | Existing proposal or needed evidence | Blocks |
 | --- | --- | --- | --- |
@@ -55,7 +55,7 @@ All entries below are Open. The owner supplies game intent/content; the develope
 | Q04 / B01 | Mutual agreement | Who votes; whether first consent freezes play; withdrawal and absent-player policy. Current proposal: all participants, freeze on first vote, no timeout advance. | T25–T27 |
 | Q05 / B01 | Ownership, visibility and overrides | Number of sides, unit control/sharing, visible unit properties, any hidden information or mandatory line of sight, and active-game admin overrides. | T15–T17, T20–T22, T29 |
 | Q06 / B01 | Combat examples | Deterministic/dice rules, rounding, modifiers and casualty allocation. Provide ordinary, boundary and interacting-ability examples with expected results. | T30–T32 |
-| Q07 / B03–B04, B09 | Account and content access policy | Public self-registration or friend invitation code; rules visibility. Also finalize session lifetime, username policy and password limits with a technical explanation. | T05–T07, T14 |
+| Q07 / B03–B04, B09 | Account and content access policy — partially resolved | Owner confirmed public player self-registration and ASCII Latin/digits/`._-` usernames of 3–32 characters on 2026-10-24. T05 specifies case-insensitive uniqueness and explained 15–128-character passphrases. Session lifetime and rules visibility remain open; see [T05](specs/0008-t05-registration.md). | Remaining: T06–T07, T14 |
 | Q08 / B22 | UI language and primary devices | Documentation remains English; confirm interface language, desktop browsers and whether phones need full board play. Desktop-first is currently proposed. | T07, T08, T11–T14, T19–T20, T22, T25–T26, T32, T34 |
 | Q09 / B21 | Operating budget and group size | Monthly spending ceiling/currency, available machine, typical players/units and upload volume. One active game with 2–8 players is a sizing proposal only. | T35–T37 |
 | Q10 / B21 | Backup destination and tolerated progress loss | Separate device/storage, retention, manual recovery and acceptable loss interval. Daily/seven copies is a proposal. | T35, T37–T38 |
@@ -64,7 +64,7 @@ Calculator result application is not required for the first release. Discuss its
 
 ## First iteration: M0 local foundation
 
-T01–T04 are complete, including the CI-runtime correction and the verified local workflow. B02/M0 are Done. No paid infrastructure or actual game-rule implementation was needed for this iteration. M1 is next and still requires Q07/Q08 for accounts and interface expectations; Q01–Q06 remain open for gameplay. No account or gameplay behavior is included in the M0 completion claim.
+T01–T04 are complete, including the CI-runtime correction and the verified local workflow. B02/M0 are Done. No paid infrastructure or actual game-rule implementation was needed for this iteration. M1 has begun with T05's registration API; T06/T07 still require remaining Q07/Q08 session/interface decisions. Q01–Q06 remain open for gameplay. No account or gameplay behavior is included in the M0 completion claim.
 
 ### T01 — Create the workspace and minimal application skeleton
 
@@ -104,7 +104,7 @@ T01–T04 are complete, including the CI-runtime correction and the verified loc
 
 | ID / parent | Priority | Status | Task and completion evidence | Depends on / input |
 | --- | --- | --- | --- | --- |
-| T05 / B03 | P1 | Needs input | Implement user model, unique normalized username, password hashing and registration endpoint. Match Q07; registration always creates a player; validate duplicates/invalid input and rate limiting with integration checks. | T02–T03; Q07 |
+| T05 / B03 | P1 | Done | Persisted player registration API, normalized username uniqueness, Argon2id and bounded attempts/hashing. [Specification](specs/0008-t05-registration.md); [verification](verification/t05-registration.md); [Review 0006](reviews/0006-t05-code-review.md): UTF-8 finding corrected; root and expanded HTTP/PostgreSQL checks passed. Earlier fresh Windows/Linux frozen checks and local migration deployment also passed. Browser form remains T07. | T02–T03; Q07 registration policy resolved |
 | T06 / B04 | P1 | Needs input | Implement login/current-user/logout, hashed opaque sessions, expiry, CSRF/origin checks and rate limits. Valid session works; logout/expiry stops access; invalid credentials do not reveal account details. | T05; Q07 |
 | T07 / B03–B04, B22 | P1 | Needs input | Build registration/login forms, authenticated shell and logout. Field errors, failed login and expired session have clear states; refresh preserves a valid login. Verify the real API flow in a browser. | T06; Q07–Q08 |
 | T08 / B05 | P1 | Needs input | Add admin bootstrap command, backend role guards and minimal admin landing page. A player cannot access admin endpoints even by direct requests; public registration cannot grant admin; last active admin is protected. | T06–T07; Q08 |
@@ -172,7 +172,7 @@ T35–T37 may be prepared before final browser tests; actual deployment follows 
 
 ## Completion evidence and maintenance
 
-T01–T04 and their foundation parent B02/M0 are Done. T03's P1 runtime correction passed fresh-install and full-check verification on 2026-10-23, restoring completion after review. T04's same-day local workflow checks include two normal owner-terminal stop/restart cycles; completion documentation was finalized on 2026-10-24. Prior local/database evidence remains separately dated. No remote CI success is claimed. No account, content-management or gameplay feature is complete yet.
+T01–T05 and the foundation parent B02/M0 are Done. T03's P1 runtime correction passed fresh-install/full-check verification on 2026-10-23. T04's same-day local workflow checks include two normal owner-terminal stop/restart cycles; documentation was finalized on 2026-10-24. T05's 2026-10-24 registration API checks passed; B03's browser flow remains T07 and M1 remains incomplete. Prior local/database evidence stays separately dated. No remote CI success, login, content-management or gameplay completion is claimed.
 
 For each completed task, add a short entry below with task ID, date, commit/artifact, checks performed and material limitations. Update affected feature criteria, decisions and specification in the same change. Move a dependent task to Ready only after all prerequisites and named inputs have been satisfied. If a task combines independently deliverable work, split it and preserve the original ID as the parent reference.
 
@@ -184,3 +184,4 @@ Required for every coherent change: create/update its numbered change specificat
 | T02 | 2026-10-22 | [Change specification](specs/0004-t02-local-database.md); [verification and source links](verification/t02-local-database.md) | Clean credential-free build, initial seven configuration/startup tests, migration history, Prisma connection, retained marker, outage/recovery and secret checks passed. Review follow-up passed ten configuration/local-target tests and one silent-network test. No domain models or backup system implemented. |
 | T03 | 2026-10-23, after review correction | [Published commit f4782e3](https://github.com/BecauseOfCourse-prog/webwargame/commit/f4782e3e888c04f9c789ad23d1ed483884cf33fd); [change specification](specs/0006-t03-repeatable-checks.md); [verification](verification/t03-repeatable-checks.md); [Review 0004](reviews/0004-t03-code-review.md) | Intentional TS2322/restoration, clean frozen installation and full lint/type/build/ten tests passed. Final Node 22.22.3 PostgreSQL migration/status/network checks passed in a disposable database. No unresolved review finding. Pushed to origin/master; remote CI status unverified (API access unavailable). No gameplay/onboarding-completion claim. |
 | T04 | 2026-10-24; runtime checks 2026-10-23 | [Change specification](specs/0007-t04-local-workflow.md); [local workflow evidence](verification/t04-local-workflow.md); [Review 0005](reviews/0005-t04-code-documentation-review.md) | Clean Git clone, cached frozen installation, setup/migrations, root checks/ten tests, browser retry, compiled preview, bounded startup failures and isolated database persistence passed under Node 22.22.3. Two normal owner-terminal cycles stopped all captured children/listeners and restarted cleanly without forced cleanup. B02/M0 complete. The 2026-10-24 review found no actionable defect; runtime checks were not repeated. Documentation/workflow maintenance only; no application, schema or dependency change and no remote CI success claim. |
+| T05 | 2026-10-24, including review correction | [Change specification](specs/0008-t05-registration.md); [verification and source links](verification/t05-registration.md); [Review 0006](reviews/0006-t05-code-review.md) | Persisted player API, strict input, unique normalized names, Argon2id and rate/work bounds. Fresh Windows/Linux Node 22.22.3 frozen checks passed; final reviewed root suite passed 24 tests and database suite passed eleven registration scenarios plus readiness (13 reported cases including parent). UTF-8 finding corrected; no unresolved finding. Local migration/status passed; disposable database removed. Commit/push authorized after final review. No registration form, session, game access or deployment; remote CI remains separately unverified. B03/M1 remain incomplete. |

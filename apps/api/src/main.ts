@@ -1,13 +1,9 @@
-import 'reflect-metadata';
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module.js';
+import { createApplication } from './application.js';
 import { loadConfiguration } from './config/environment.js';
 
 async function bootstrap(): Promise<void> {
   const configuration = loadConfiguration();
-  const app = await NestFactory.create(AppModule.register(configuration), { abortOnError: false });
-  app.setGlobalPrefix('api');
-  app.enableShutdownHooks();
+  const app = await createApplication(configuration);
   try {
     await app.listen(configuration.apiPort, '127.0.0.1');
   } catch (error) {

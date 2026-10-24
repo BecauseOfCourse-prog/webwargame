@@ -10,4 +10,16 @@ datasource db {
   provider = "postgresql"
 }
 
-// Domain models arrive with their feature tasks. T02 only connects to PostgreSQL.
+enum UserRole {
+  PLAYER
+  ADMIN
+}
+
+model User {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  username           String   @db.VarChar(32)
+  normalizedUsername String   @unique @db.VarChar(32)
+  passwordHash       String
+  role               UserRole @default(PLAYER)
+  createdAt          DateTime @default(now()) @db.Timestamptz(3)
+}

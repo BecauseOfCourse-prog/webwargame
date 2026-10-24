@@ -17,13 +17,14 @@
     "db:status": "pnpm --filter @webwargame/api db:status",
     "db:verify": "pnpm --filter @webwargame/api db:verify",
     "test:config": "pnpm --filter @webwargame/api test:config",
+    "test:registration": "pnpm --filter @webwargame/api test:registration",
     "test:database": "pnpm --filter @webwargame/api test:database",
     "build:packages": "pnpm --filter \"./packages/*\" run build",
     "dev": "pnpm build:packages && pnpm --parallel -r run dev",
     "build": "pnpm -r run build",
     "typecheck": "pnpm build:packages && pnpm -r run typecheck",
     "lint": "eslint . --max-warnings 0",
-    "test": "pnpm test:config",
+    "test": "pnpm test:config && pnpm test:registration",
     "check": "pnpm lint && pnpm typecheck && pnpm build && pnpm test"
   },
   "devDependencies": {
