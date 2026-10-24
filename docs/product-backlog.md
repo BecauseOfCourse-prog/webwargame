@@ -1,7 +1,7 @@
 # Product Backlog
 
 Date: 2026-10-24
-Status: B02 foundations (T01–T04 / M0) and B03/B04 account flows (T05–T07) complete; roles, content administration and gameplay remain planned
+Status: B02 foundations (T01–T04 / M0) and M1 accounts/global roles (T05–T08) complete; B05 game-object access, content administration and gameplay remain planned
 
 Architecture and requirement IDs: [Specification 0001](specs/0001-project-specification.md)
 
@@ -19,7 +19,7 @@ Confirmed audience and cost constraint: a hobby service for the owner's friends,
 | B02 | P0 / technical | Establish application foundations. **Done:** T01–T04 / M0; [T04 specification](specs/0007-t04-local-workflow.md) and [completion evidence](verification/t04-local-workflow.md). | Web/API/shared engine workspace builds; reproducible install and version lockfile exist; configuration is documented; database migrations and CI type/lint checks run without production secrets. Local checks and CI configuration are verified; remote CI status remains unverified. | — |
 | B03 | P1 / R01 | As a visitor, register using username and password. **Done:** [T05 API specification](specs/0008-t05-registration.md), [T07 browser specification](specs/0010-t07-account-interface.md) and [browser verification](verification/t07-account-interface.md). | Valid unique normalized username and acceptable password create a player account; duplicate/invalid input produces useful validation; passwords are hashed; registration cannot assign admin or private-game access; requests are rate limited. Owner confirmed public registration and 3–32-character ASCII Latin/digit/`._-` names on 2026-10-24. The Russian form confirms the password and returns to explicit login. | B02 |
 | B04 | P1 / R02 | As a user, log in, log out and end expired sessions. **Done:** [T06 API specification](specs/0009-t06-sessions.md), [T07 browser specification](specs/0010-t07-account-interface.md) and [browser verification](verification/t07-account-interface.md). | Valid credentials create a protected revocable session; bad credentials use generic errors; logout/expiry invalidates access; brute-force controls and CSRF/origin checks cover relevant endpoints. Owner confirmed seven-day absolute / 24-hour idle lifetimes on 2026-10-24. The browser restores valid sessions on reload, serializes cookie-changing actions across tabs and handles unavailable/uncertain outcomes without inventing successful logout. | B03 |
-| B05 | P1 / R03, R13 | Enforce roles and object-level access. | Player cannot invoke admin endpoints or access another private game by changing an ID; game membership, side and unit ownership are checked server-side; first-admin bootstrap is documented; last active admin is protected. | B04 |
+| B05 | P1 / R03, R13 | Enforce roles and object-level access. **Partial:** [T08 specification](specs/0011-t08-administrator-access.md) and [verification](verification/t08-administrator-access.md) complete global role checks, first-admin bootstrap, protected landing page and last-admin deletion/demotion protection. Game membership, side and unit ownership remain T17. | Player cannot invoke admin endpoints or access another private game by changing an ID; game membership, side and unit ownership are checked server-side; first-admin bootstrap is documented; last active admin is protected. All accounts are currently active; T11 must extend the last-admin invariant when suspension is added. | B04 |
 
 ## Content and administration
 

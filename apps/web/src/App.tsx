@@ -3,6 +3,7 @@ import type { FormEvent, RefObject } from 'react';
 import { HEALTH_PATH, isHealthResponse } from '@webwargame/contracts';
 import { AccountApiError, registerAccount } from './auth/account-client.ts';
 import { browserSession, sessionChanges, supportsSessionChanges } from './auth/browser-session.ts';
+import { AdminPanel } from './admin/AdminPanel.tsx';
 
 type Mode = 'login' | 'register';
 type Fields = Partial<Record<'username' | 'password' | 'confirmation', string>>;
@@ -11,6 +12,7 @@ function errorMessage(error: unknown): string {
 }
 
 export function App() {
+  const adminRoute = window.location.pathname.replace(/\/+$/, '') === '/admin';
   const snapshot = useSyncExternalStore(browserSession.subscribe, browserSession.getSnapshot);
   const [actionError, setActionError] = useState('');
   const heading = useRef<HTMLHeadingElement>(null);
@@ -53,11 +55,25 @@ export function App() {
         <span>Web Wargame</span>
         <span className="stage">Ваш игровой стол</span>
       </header>
-      <section className="account-layout" aria-label="Учётная запись">
+      {adminRoute && snapshot.phase === 'authenticated' && snapshot.session ? <section className="admin-layout" aria-label="Администрирование">
+        {snapshot.busy !== 'login' && snapshot.busy !== 'logout' ? <AdminPanel key={`${snapshot.session.user.id}:${snapshot.session.csrfToken}:${snapshot.session.user.role}`} userId={snapshot.session.user.id} /> : <section className="admin-panel account-status" aria-busy="true" aria-labelledby="account-title">
+          <h1 id="account-title" ref={heading} tabIndex={-1}>Проверяем сеанс</h1>
+          <p role="status">Дождитесь завершения действия с учётной записью…</p>
+        </section>}
+        <div className="admin-session-actions">
+          {snapshot.notice && <p className="form-message" role="status">{snapshot.notice}</p>}
+          {actionError && <p className="form-message error" role="alert">{actionError}</p>}
+          {!supportsSessionChanges && <CompatibilityMessage />}
+          <div className="account-toolbar">
+            <button type="button" className="button-secondary" disabled={snapshot.busy !== null} onClick={() => { setActionError(''); void browserSession.restore(); }}>Проверить сеанс</button>
+            <button type="button" className="button-secondary" disabled={snapshot.busy === 'login' || snapshot.busy === 'logout' || !supportsSessionChanges} onClick={() => void logout()}>{snapshot.busy === 'logout' ? 'Выходим…' : 'Выйти'}</button>
+          </div>
+        </div>
+      </section> : <section className="account-layout" aria-label="Учётная запись">
         <div className="account-intro">
           <p className="eyebrow">За одним игровым столом</p>
-          <h1>Варгейм<br />для друзей.</h1>
-          <p className="intro">Место для ваших сражений, карт и армий. Войдите или создайте учётную запись, чтобы присоединиться.</p>
+          <h1>{adminRoute ? 'Вход в управление' : <>Варгейм<br />для друзей.</>}</h1>
+          <p className="intro">{adminRoute ? 'Войдите в учётную запись. Сервер проверит права перед открытием панели администратора.' : 'Место для ваших сражений, карт и армий. Войдите или создайте учётную запись, чтобы присоединиться.'}</p>
           <p className="intro account-note">Мы готовим площадку для первой партии. Доступ к партиям выдаётся отдельно.</p>
         </div>
         {snapshot.phase === 'checking' || snapshot.phase === 'unavailable' ? (
@@ -79,6 +95,7 @@ export function App() {
             {snapshot.notice && <p className="form-message" role="status">{snapshot.notice}</p>}
             {actionError && <p className="form-message error" role="alert">{actionError}</p>}
             {!supportsSessionChanges && <CompatibilityMessage />}
+            {snapshot.session.user.role === 'ADMIN' && <nav className="account-navigation" aria-label="Разделы"><a className="text-link" href="/admin">Панель администратора</a></nav>}
             <div className="account-toolbar">
               <button type="button" className="button-secondary" disabled={snapshot.busy !== null} onClick={() => { setActionError(''); void browserSession.restore(); }}>{snapshot.busy === 'restore' ? 'Проверяем…' : 'Проверить сеанс'}</button>
               <button type="button" className="button-secondary" disabled={snapshot.busy === 'login' || snapshot.busy === 'logout' || !supportsSessionChanges} onClick={() => void logout()}>{snapshot.busy === 'logout' ? 'Выходим…' : 'Выйти'}</button>
@@ -86,7 +103,7 @@ export function App() {
             {snapshot.busy === 'logout' && <p className="field-hint" role="status">Дождитесь ответа сервера. Если ожидание затянулось, обновите страницу и проверьте сеанс.</p>}
           </section>
         ) : <AccountForms busy={snapshot.busy === 'login' || snapshot.busy === 'logout'} notice={snapshot.notice} headingRef={heading} />}
-      </section>
+      </section>}
       <footer><ConnectionStatus /></footer>
     </main>
   );

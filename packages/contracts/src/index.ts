@@ -3,6 +3,12 @@ export const REGISTRATION_PATH = '/api/auth/register';
 export const LOGIN_PATH = '/api/auth/login';
 export const CURRENT_USER_PATH = '/api/auth/me';
 export const LOGOUT_PATH = '/api/auth/logout';
+export const ADMIN_OVERVIEW_PATH = '/api/admin/overview';
+
+export interface AdminOverviewResponse {
+  status: 'ready';
+  user: { id: string; username: string; role: 'ADMIN' };
+}
 
 export interface LoginRequest {
   username: string;

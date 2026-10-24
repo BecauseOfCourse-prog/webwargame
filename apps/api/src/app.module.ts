@@ -10,13 +10,16 @@ import { RegistrationService } from './registration/registration.service.js';
 import { AuthController } from './auth/auth.controller.js';
 import { AuthService } from './auth/auth.service.js';
 import { SessionService } from './auth/session.service.js';
+import { SessionGuard } from './auth/session.guard.js';
+import { RolesGuard } from './auth/roles.guard.js';
+import { AdminController } from './admin/admin.controller.js';
 
 @Module({})
 export class AppModule {
   static register(configuration: RuntimeConfiguration): DynamicModule {
     return {
       module: AppModule,
-      controllers: [HealthController, ReadinessController, RegistrationController, AuthController],
+      controllers: [HealthController, ReadinessController, RegistrationController, AuthController, AdminController],
       providers: [
         { provide: RuntimeConfiguration, useValue: configuration },
         PrismaService,
@@ -24,6 +27,8 @@ export class AppModule {
         RegistrationService,
         AuthService,
         SessionService,
+        SessionGuard,
+        RolesGuard,
       ],
     };
   }

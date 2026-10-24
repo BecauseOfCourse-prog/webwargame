@@ -1,6 +1,6 @@
 # Wargame Web Service
 
-A multiplayer, turn-based tabletop wargame service, with local foundations and a working registration/login/session interface.
+A multiplayer, turn-based tabletop wargame service, with local foundations, working accounts and server-enforced administrator access.
 
 Built for the owner's group of friends, with no current commercial launch plan. Favor low recurring cost and simple maintenance: one host, local persistent uploads, self-hosted PostgreSQL, and off-host backups. No paid application service is required by the initial design.
 
@@ -17,6 +17,7 @@ Built for the owner's group of friends, with no current commercial launch plan. 
 - [T05 change specification](docs/specs/0008-t05-registration.md): player accounts, password protection and registration API.
 - [T06 change specification](docs/specs/0009-t06-sessions.md): login, server-side sessions, expiry and CSRF/origin protection.
 - [T07 change specification](docs/specs/0010-t07-account-interface.md): Russian account forms, signed-in shell and coordinated browser session state.
+- [T08 change specification](docs/specs/0011-t08-administrator-access.md): administrator bootstrap, reusable server permission guards and protected landing page.
 - [Initial project specification](docs/specs/0001-project-specification.md): proposed stack, architecture, domain model, game-state consistency, and decisions requiring clarification.
 - [Product backlog](docs/product-backlog.md): traceable requirements, priorities, acceptance criteria, and delivery sequence.
 - [Implementation backlog](docs/implementation-backlog.md): actionable tasks, current statuses, open decisions, and the first development iteration.
@@ -37,8 +38,10 @@ Built for the owner's group of friends, with no current commercial launch plan. 
 - [T06 code review](docs/reviews/0007-t06-code-review.md): corrected cleanup/renewal race and controlled PostgreSQL regression.
 - [T07 verification](docs/verification/t07-account-interface.md): client/controller tests, real account flow, expiry/recovery and narrow-layout checks.
 - [T07 code review](docs/reviews/0008-t07-code-review.md): corrected queued-login synchronization, registration recovery guidance and long-name overflow.
+- [T08 verification](docs/verification/t08-administrator-access.md): permission/bootstrap checks, concurrent last-administrator protection and migration evidence.
+- [T08 code review](docs/reviews/0009-t08-code-review.md): authorization, bootstrap/concurrency and browser-state review with fresh checks; no actionable defect found.
 
-All project documentation is in English. T01 provides a browser shell and a real backend health request; T02 adds PostgreSQL, Prisma, migration history and validated environment configuration; T03 adds repeatable checks/CI; T04 verifies the local workflow. T05/T06 add player registration and revocable sessions; T07 supplies registration/login forms, a signed-in shell and logout. The owner confirmed Russian UI, current desktop Chrome/Edge/Firefox as primary browsers and usable account forms on phones. Full phone board play remains open under Q08. Role enforcement, board interaction and game rules remain future tasks.
+All project documentation is in English. T01 provides a browser shell and a real backend health request; T02 adds PostgreSQL, Prisma, migration history and validated environment configuration; T03 adds repeatable checks/CI; T04 verifies the local workflow. T05/T06 add player registration and revocable sessions; T07 supplies registration/login forms, a signed-in shell and logout. T08 adds administrator bootstrap, backend role guards and a protected administrator page, completing M1. The owner confirmed Russian UI, current desktop Chrome/Edge/Firefox as primary browsers and usable account forms on phones. Full phone board play remains open under Q08. Game-specific permissions, board interaction and game rules remain future tasks.
 
 The initial scope includes username/password accounts, administrator and player roles, illustrated rules, a shared interactive battle map, movement validation, turn management, unit inspection, a combat calculator, and administration of content and permissions.
 
@@ -175,12 +178,13 @@ PostgreSQL's image applies initialization credentials only when its volume is em
 | `pnpm db:generate` | Generate the ignored Prisma client from the committed schema; no DB connection. |
 | `pnpm db:migrate` | Apply committed migrations to the configured database. |
 | `pnpm db:status` | Check migration history against the configured database. |
+| `pnpm admin:bootstrap --username Commander` | After building/migrating, grant the first administrator role to an existing player; see [administrator access](#administrator-access-t08). |
 | `pnpm db:migrate:dev --name describe_change` | Create/apply a reviewed development migration after editing the schema. |
 | `pnpm test:config` | After building, run configuration and real startup-failure tests. |
-| `pnpm test:database` | After building, test registration/sessions in disposable local databases and readiness during a silent network interruption; the local/CI role needs create/drop-database permission. |
+| `pnpm test:database` | After building, test registration/sessions/administrator access in disposable local databases and readiness during a silent network interruption; the local/CI role needs create/drop-database permission. |
 | `pnpm db:verify` | Default `webwargame-local` project only: after building, verify clean migrations and persistence in a temporary database; recreates its PostgreSQL container, retaining the volume. |
 
-The T02 baseline migration establishes `public` and migration history; T05 introduces `User`/`UserRole`, and T06 adds `Session`. Game tables remain future work. When a feature requires a schema change, edit `apps/api/prisma/schema.prisma`, run `pnpm db:migrate:dev --name describe_change`, inspect its SQL and commit the schema plus the migration. Never edit an already applied migration or use `db push` as the project history. Local migrate-dev may use a shadow database; use it only against development databases.
+The T02 baseline migration establishes `public` and migration history; T05 introduces `User`/`UserRole`, T06 adds `Session`, and T08 adds the singleton `AdministratorGuard` and database triggers protecting the last administrator. Game tables remain future work. When a feature requires a schema change, edit `apps/api/prisma/schema.prisma`, run `pnpm db:migrate:dev --name describe_change`, inspect its SQL and commit the schema plus the migration. Never edit an already applied migration or use `db push` as the project history. Local migrate-dev may use a shadow database; use it only against development databases.
 
 ### Where local data lives
 
@@ -215,13 +219,13 @@ pnpm check
 | `pnpm lint` | ESLint correctness rules for maintained JS/TS, including React Hooks; any warning fails. |
 | `pnpm typecheck` | Build shared packages and check all workspace TypeScript, including Prisma client generation. |
 | `pnpm build` | Build shared packages, compiled API and browser assets. |
-| `pnpm test` | Run 67 database-free tests: 41 API configuration/startup/local-target, registration and authentication/security tests plus 26 account-client/controller tests; build first when running separately. |
+| `pnpm test` | Run 92 database-free tests: 58 API configuration/startup/local-target, registration, authentication/access/bootstrap tests plus 34 browser account/admin-client/controller tests; build first when running separately. |
 | `pnpm test:registration` | Run the fourteen database-free registration/hash/limiter tests after building. |
-| `pnpm test:auth` | Run the fourteen database-free login/token/cookie/CSRF/capacity/failure tests after building. |
-| `pnpm test:web` | Run twelve browser account-client and fourteen session-controller tests with Node's built-in runner; build shared contracts first when running separately. No browser installation or database required. |
+| `pnpm test:auth` | Run 31 database-free login/token/cookie/CSRF/capacity/failure, access-guard and bootstrap tests after building. |
+| `pnpm test:web` | Run twelve browser account-client, fourteen session-controller and eight admin-client tests with Node's built-in runner; build shared contracts first when running separately. No browser installation or database required. |
 | `pnpm check` | Run lint, typecheck, build and `test` in that order; no `.env`, production secrets or running database required. |
 
-After building, `pnpm test:database` additionally checks real HTTP registration/authentication and readiness during a PostgreSQL network interruption. It requires local configuration and a running loopback database, with a URL without query parameters or a fragment. The local bootstrap/CI user must be able to create/drop databases: registration/authentication tests create separate random `t05_registration_*` / `t06_auth_*` databases, apply migrations twice and drop only their own database during cleanup. They start temporary API listeners/proxy and do not replace the database container or insert test accounts into the project database.
+After building, `pnpm test:database` additionally checks real HTTP registration/authentication, administrator bootstrap/access/last-admin concurrency and readiness during a PostgreSQL network interruption. It requires local configuration and a running loopback database, with a URL without query parameters or a fragment. The local bootstrap/CI user must be able to create/drop databases: these tests create separate random `t05_registration_*` / `t06_auth_*` / `t08_admin_*` databases, apply migrations twice and drop only their own database during cleanup. They start temporary API listeners/proxy and do not replace the database container or insert test accounts into the project database.
 
 `pnpm db:verify` is a separate, opt-in persistence check for the default `webwargame-local` Compose project only. It requires the canonical loopback URL matching the Compose user/password/port/database, with no query parameters or fragment; driver query parameters can override a URL's apparent endpoint. It creates a random `t02_verify_*` database, applies migrations twice, writes a marker through Prisma, recreates the default project's PostgreSQL container, checks the marker and removes that temporary database. Container replacement briefly disconnects other API connections, so stop normal development first. The utility retains the project database and volume, but its fixed Compose project name makes it unsuitable for the [isolated second-checkout setup](#optional-second-checkout).
 
@@ -235,7 +239,7 @@ After `pnpm db:migrate`, `POST /api/auth/register` accepts uncompressed UTF-8 `a
 
 Success returns 201 with `user` containing only `id`, `username`, `role: PLAYER` and `createdAt`. Invalid fields return 400 with field errors; duplicates 409; bodies over 4 KiB 413; unsupported media/encoding 415. Attempts are limited to ten per socket address and 100 globally per 15-minute fixed window; 429 includes `Retry-After`. All requests through Vite share its loopback address. Forwarding headers are ignored; counters are process-local and reset on API restart. Two concurrent registration hashes are allowed; exhausted hashing capacity/database failure returns generic 503. See [the full contract and tradeoffs](docs/specs/0008-t05-registration.md).
 
-Registration creates a player account without a session or game membership. The T07 browser form returns to explicit login after success; administrator provisioning remains T08. Registration and login share a maximum of two concurrent Argon2 operations. The account interface preserves the approved visual style.
+Registration creates a player account without a session or game membership. The T07 browser form returns to explicit login after success; administrator provisioning uses the separate T08 operator command below. Registration and login share a maximum of two concurrent Argon2 operations. The account interface preserves the approved visual style.
 
 ### Login and sessions API (T06)
 
@@ -255,11 +259,27 @@ Unknown/wrong/invalid credentials use generic 401; session failure uses 401, Ori
 
 ### Browser account interface (T07)
 
-Open the development frontend at [127.0.0.1:5173](http://127.0.0.1:5173) after starting the API and Vite. Use **Регистрация** to create a player, then **Вход** with the chosen password. Registration asks for confirmation and shows field errors; it does not grant access to a game. A successful login displays the current username and role. **Выйти** revokes the current session. Roles are displayed only; server role guards and administrator bootstrap remain T08.
+Open the development frontend at [127.0.0.1:5173](http://127.0.0.1:5173) after starting the API and Vite. Use **Регистрация** to create a player, then **Вход** with the chosen password. Registration asks for confirmation and shows field errors; it does not grant access to a game. A successful login displays the current username and role. **Выйти** revokes the current session. Administrators also see the T08 panel link; the server checks its permission separately.
 
 The browser restores a valid session on reload and checks again when the page becomes visible or focused. Session/CSRF data stay in memory; the bearer remains in the HttpOnly cookie. Same-origin Web Locks serialize login/logout across tabs and a marker-only BroadcastChannel prompts session refresh. Current desktop Chrome/Edge/Firefox are the agreed targets; a browser without the required session coordination receives an explicit compatibility message. Account layouts were inspected at phone widths in the in-app browser; the full browser/native-phone matrix remains later verification.
 
 There is no automatic authenticated heartbeat, so leaving a page open does not keep the server session alive. Local expiry clears the signed-in view. Current-user reads time out after ten seconds; login/logout wait for the response and reconcile an uncertain result before allowing another cookie-changing action. They are not automatically retried. If a mutation appears stuck, refresh the page and check the server session rather than assuming success. See [T07 behavior and tradeoffs](docs/specs/0010-t07-account-interface.md) and [verification](docs/verification/t07-account-interface.md).
+
+### Administrator access (T08)
+
+Create your intended account through normal registration first. After applying migrations and building, an operator with access to this checkout's private database configuration can appoint that existing account as the first administrator:
+
+```powershell
+pnpm db:migrate
+pnpm build
+pnpm admin:bootstrap --username Commander
+```
+
+Replace `Commander` with the registered username; matching follows the same case-insensitive username rules. The command does not accept a password or create an account. When no administrator exists, it changes the chosen player to `ADMIN` and revokes that user's existing sessions in one transaction. Sign in again afterward. Repeating the command for an existing administrator succeeds without changing sessions; choosing another player once an administrator exists is refused. Later role management belongs to T11, rather than this first-administrator command. The local verification did not appoint an administrator in the owner's main database.
+
+Open **Панель администратора** after login, or visit [the administrator page](http://127.0.0.1:5173/admin). An anonymous visitor sees login. An authenticated browser always calls `GET /api/admin/overview` before rendering the panel: 200 returns `{status:'ready',user:{id,username,role:'ADMIN'}}`, a player receives 403 `ACCESS_DENIED`, and an expired/invalid session receives 401 `UNAUTHENTICATED`. A browser role label only controls link visibility. Requests use the current cookie, `X-Wargame-Request: 1`, exact-origin checks and no-store responses; the shared guards support session-bound CSRF checks for future mutations. The empty panel confirms access and explains that catalogs/account management arrive later.
+
+The fourth migration protects the last administrator against deletion or demotion, including concurrent and multi-row changes. It serializes account writes through a single database guard row before they lock user rows; this favors correctness and simple maintenance for a small group. All accounts are currently active: T11 must extend this invariant when suspension is introduced. Game membership, sides and unit ownership remain T17. See [T08 decisions and limits](docs/specs/0011-t08-administrator-access.md) and [actual verification](docs/verification/t08-administrator-access.md).
 
 ### Compiled application preview
 

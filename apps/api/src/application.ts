@@ -7,6 +7,7 @@ import { CURRENT_USER_PATH, LOGIN_PATH, LOGOUT_PATH, REGISTRATION_PATH } from '@
 import { AppModule } from './app.module.js';
 import type { RuntimeConfiguration } from './config/environment.js';
 import { RegistrationLimiter } from './registration/registration-limiter.js';
+import { isTrustedSessionRequest } from './auth/session-request-security.js';
 
 export async function createApplication(configuration: RuntimeConfiguration): Promise<NestExpressApplication> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule.register(configuration), {
@@ -28,7 +29,7 @@ export async function createApplication(configuration: RuntimeConfiguration): Pr
     next();
   });
   const loginLimiter = new RegistrationLimiter();
-  for (const path of [LOGIN_PATH, CURRENT_USER_PATH, LOGOUT_PATH]) {
+  for (const path of [LOGIN_PATH, CURRENT_USER_PATH, LOGOUT_PATH, '/api/admin']) {
     app.use(path, (request: IncomingMessage, response: ServerResponse, next: () => void) => {
       response.setHeader('Cache-Control', 'no-store');
       if (path === LOGIN_PATH && request.method === 'POST') {
@@ -39,10 +40,7 @@ export async function createApplication(configuration: RuntimeConfiguration): Pr
           return;
         }
       }
-      const origin = request.headers.origin;
-      const mutation = request.method !== 'GET' && request.method !== 'HEAD';
-      if (request.headers['x-wargame-request'] !== '1' ||
-        (mutation ? origin !== configuration.publicOrigin : origin !== undefined && origin !== configuration.publicOrigin)) {
+      if (!isTrustedSessionRequest(request, configuration.publicOrigin)) {
         response.writeHead(403, { 'Content-Type': 'application/json' });
         response.end(JSON.stringify({ code: 'CSRF_REJECTED', message: 'Request verification failed.' }));
         return;

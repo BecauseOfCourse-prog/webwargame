@@ -224,6 +224,11 @@ test('authentication persists bounded opaque sessions and enforces login, expiry
       unicodeUser = await databaseOperation(async () => database.user.create({ data: {
         username: 'Unicode.player', normalizedUsername: 'unicode.player', passwordHash: await hashPassword(unicodePassword),
       } }));
+      // T08 protects the final administrator. Keep a separate fixture admin so
+      // this legacy role-refresh scenario may restore its user to PLAYER.
+      await databaseOperation(() => database.user.create({ data: {
+        username: 'T06.Keeper', normalizedUsername: 't06.keeper', passwordHash: mainUser.passwordHash, role: 'ADMIN',
+      } }));
       assert.equal(await countSessions(), 0);
     });
 

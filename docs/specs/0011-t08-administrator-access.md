@@ -1,0 +1,41 @@
+# Specification 0011: T08 Administrator Access and Bootstrap
+
+Date: 2026-10-24
+
+Status: Implemented and locally verified. Task T08 / B05 closes the accounts/roles milestone M1. Builds on the T05–T07 account/session flow. B05 remains partial until game-object authorization in T17.
+
+## 1. Outcome and scope
+
+Add a local first-administrator command, reusable server authentication/role guards and a minimal protected administrator landing page. Ordinary players and unauthenticated/expired/revoked sessions must be denied by direct API requests. Registration remains player-only. Protect deletion/demotion of the last administrator, including concurrent writes. Account suspension and general role/account management remain T11; game-object permissions remain T17 and later game tasks.
+
+## 2. Decisions and rationale
+
+- Bootstrap promotes an explicitly named, already registered player. It does not create passwords, accept a password argument, expose a public elevation endpoint or automatically promote the first visitor. With no administrator, the promotion and revocation of that user's existing sessions commit together. An already-administrator target is a harmless no-op; a different player cannot be promoted after initialization. Later grants belong to authenticated account administration. No real account is selected or promoted without its explicit name.
+- Guards validate the existing strict cookie/session, query the current database role and apply required role metadata. The browser role controls navigation visibility only. Protected requests retain exact origin/custom-header/no-store policy; future protected mutations additionally require session-bound CSRF. Missing sessions return 401, authenticated insufficient roles return 403, and storage failures stay sanitized. Role checks authorize admission to a request; later transactional writes must recheck their own invariants.
+- A forward PostgreSQL migration adds a single internal guard row. Statement triggers acquire a row-versioning write before every User insert, update or delete; a row trigger rejects deletion/demotion of the sole administrator. Bootstrap acquires the same guard before checking current users. This serializes tiny-group account writes and prevents two removals from both observing a second administrator. A row write also causes conflicting repeatable-read/serializable transactions to abort safely; an advisory lock alone would not refresh their old snapshots. The cost is one small internal table/trigger protocol, no new service or recurring charge. Password hashing stays outside this lock. Direct owner-level schema changes/TRUNCATE/disabled triggers are outside normal application operations. PostgreSQL documents the relevant [volatile-function snapshots](https://www.postgresql.org/docs/18/xfunc-volatility.html) and [isolation behavior](https://www.postgresql.org/docs/18/transaction-iso.html); real concurrent checks below validate this implementation. Revisit serialization if actual account-write traffic warrants the additional complexity.
+- All current users are active: there is no suspension field yet. The present invariant counts ADMIN roles. T11 must extend it when adding suspension/deactivation rather than claiming that feature already exists.
+- Keep the approved Russian interface and existing React/CSS. A normal `/admin` link/document navigation is sufficient; no router library is introduced. The page requests its protected overview even for a direct player URL and displays administrator content only after validated server success. Loading/error/denied/retry and account-change cleanup are required; no invented catalog or administration actions are shown.
+
+These decisions were explained in Russian. They keep one backend/PostgreSQL instance and introduce no paid service or runtime dependency. A separate identity provider or permissions framework would add configuration and maintenance beyond the current two-role model; revisit with actual role/object complexity.
+
+## 3. Resulting interfaces and data
+
+Local command: `pnpm admin:bootstrap --username <existing-name>` after building/migrating. Credentials stay in the existing private environment; the account password is never a command argument. Username lookup trims and normalizes the existing ASCII policy. Only that argument or `--help` is accepted. Failure output is fixed and omits raw driver errors, supplied arguments and environment values. The command starts no HTTP server. Application role changes use live database roles and do not treat a client response as authorization.
+
+`GET /api/admin/overview` returns `{status:'ready',user:{id,username,role:'ADMIN'}}` only to a current administrator session. It exposes no password/session secrets, counts or future administrator capabilities. Registration/login/session endpoints retain their T05/T06 contracts. Shared contracts supply the new route/public response shape.
+
+The additive [migration](../../apps/api/prisma/migrations/20261024000300_admin_access/migration.sql) preserves existing users/sessions/history, seeds only an internal lock row and installs last-administrator protection. No initial real administrator is seeded. Earlier migrations are unchanged. No dependency or lockfile change was needed. [Bootstrap](../../apps/api/src/admin-provisioning/bootstrap-administrator.ts), [guards](../../apps/api/src/auth/session.guard.ts), [controller](../../apps/api/src/admin/admin.controller.ts), [contracts](../../packages/contracts/src/index.ts) and [browser panel](../../apps/web/src/admin/AdminPanel.tsx) implement the slice. Browser reads are bounded to 16 KiB and ten seconds, validate the public shape and copy only public fields. No automatic request retry grants authority.
+
+## 4. Acceptance and actual verification
+
+Root `pnpm check` passed lint, types, generation/builds and 92 database-free tests. The complete PostgreSQL suite passed 44 reported cases. New coverage verifies bootstrap validation, idempotence/refusal, session revocation and competing initial grants; direct anonymous/player/admin/expired/revoked access; forged roles and registration escalation; current-role changes; origin/custom-header/CSRF boundaries; sanitized failures; missing guard row; bulk and concurrent last-admin changes under READ COMMITTED, REPEATABLE READ and SERIALIZABLE. A legacy T06 fixture initially failed because it tried to remove its only administrator; it now retains a separate fixture administrator without weakening protection.
+
+The actual browser/API/PostgreSQL flow verified player denial, bootstrap revocation and password re-entry, admin access/reload/navigation, overview error/retry recovery, live role demotion, logout and the 320 px layout. Read-only session restoration retains existing controls to avoid focus-triggered first-click loss. Narrow inspection reduced the minimum admin heading size to 26 px so the Russian word fits on a line. Main migration deployment/repeat/status passed; the main database still has no users/sessions or appointed administrator. Independent source review found no remaining actionable defect. [Verification evidence](../verification/t08-administrator-access.md) records exact runs, cleanup and limitations; README/context/backlogs are updated in this same change.
+
+## 5. Deferred scope and limits
+
+No general role-change, suspension, user-list/reset UI/API, uploads, rules/catalogs, game membership/object permission, deployment or paid infrastructure. Last-admin protection does not restrict a database owner deliberately altering its own schema.
+
+## 6. Owner-requested review
+
+The owner subsequently authorized review, corrections, commit and push on 2026-10-24. [Review 0009](../reviews/0009-t08-code-review.md) found no actionable defect, so no source/migration/dependency correction was needed. Fresh root checks passed all 92 database-free tests and the complete PostgreSQL suite passed 44 cases again. Existing browser evidence remains separately scoped; the review does not claim a new browser matrix or deployment. Specification/context/backlog/review/evidence are included with the implementation. The overview renews server idle expiry but the browser conservatively retains its last known `/me` deadline; later frequently active pages must reconcile session deadlines with their authenticated activity.

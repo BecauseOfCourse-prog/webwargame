@@ -1,0 +1,21 @@
+# Review 0009: T08 Administrator Access
+
+Date: 2026-10-24
+
+Scope: Uncommitted T08 against `7ce07e9a0122d4769ec5c162372a7c5caed9154e`, including bootstrap CLI/service, schema/migration, server guards and middleware, public contracts, administrator page/client/styles, tests/scripts and related documentation. The owner explicitly requested review, corrections, commit and push. See [Specification 0011](../specs/0011-t08-administrator-access.md) and [verification](../verification/t08-administrator-access.md).
+
+## 1. Findings and reviewed behavior
+
+No actionable defect was found. No source correction or dependency change was required by this review. Three independent reviews covered server authorization, provisioning/persistence and browser state; the primary review also checked their integration, test isolation, commands, documentation and publication scope.
+
+- [SessionGuard](../../apps/api/src/auth/session.guard.ts), [RolesGuard](../../apps/api/src/auth/roles.guard.ts) and [middleware](../../apps/api/src/application.ts): trusted request boundaries, strict cookie selection, live database roles, default denial without metadata/principal, no idle renewal before failed mutation CSRF, current final identity, no-store/sanitized failures and minimal public overview. Caller-supplied role headers cannot elevate access.
+- [Bootstrap](../../apps/api/src/admin-provisioning/bootstrap-administrator.ts), [CLI](../../apps/api/scripts/bootstrap-admin.mjs) and [migration](../../apps/api/prisma/migrations/20261024000300_admin_access/migration.sql): explicit existing-account selection, argument/configuration error privacy, shared lock before user lookup, transactional initial grant/session revocation, idempotence/refusal, multi-row rollback and snapshot-safe last-admin serialization. All User writes use the protocol; raw database-owner schema changes remain outside its documented scope.
+- [Panel](../../apps/web/src/admin/AdminPanel.tsx), [client](../../apps/web/src/admin/admin-client.ts) and [App](../../apps/web/src/App.tsx): direct-player API denial, identity/CSRF/role keyed remounts, disposed obsolete requests, 401 reconciliation, cookie-mutation hiding, safe streamed UTF-8/shape/public-field validation, response limit/timeout, retry semantics, focus, wrapping and preserved controls during read-only restoration.
+
+The local session display can expire conservatively at its last known `/me` deadline; the overview renews server idle time without supplying a new session deadline. This is a documented limit of the current minimal read-only page, not permission enforcement. Frequently active future admin/game pages must reconcile deadlines with authenticated activity. Future transactional writes must recheck domain permissions; T08 only admits the protected overview. Suspension remains T11 and game-object authorization remains T17.
+
+## 2. Verification and publication
+
+Independent focused runs passed nine access tests, eight bootstrap tests and all 34 browser-client/controller tests. The primary fresh root `pnpm check` passed lint, types, Prisma generation, builds and all 92 database-free tests. The complete PostgreSQL suite was also repeated and passed all 44 reported cases with no failures/skips. Logs are ignored `.local/t08-verification/review-check.log` and `review-database.log`; these are new review runs. Earlier real browser flows remain separately scoped in the verification report and were not relabeled as newly executed.
+
+Final local link/whitespace, credential scan, migration/main-data and disposable-resource checks are recorded in [verification](../verification/t08-administrator-access.md#5-owner-requested-review-and-publication). The lockfile is unchanged. Fetched `origin/master` matched the reviewed base, so no merge, history rewrite or force push is needed. Publication includes only T08 source/tests/scripts/schema/migration and mandatory specification/context/backlog/review/evidence updates. Private configuration, generated output, installed dependencies, local fixtures, screenshots and logs are excluded. Commit/push is explicitly owner-authorized; the resulting exact remote SHA is verified after push and reported to the owner. Remote CI and deployment are separate outcomes.

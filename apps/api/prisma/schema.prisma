@@ -15,6 +15,12 @@ enum UserRole {
   ADMIN
 }
 
+// Internal singleton for the last-administrator locking protocol. The migration
+// seeds id=1 and enforces its singleton constraint; this is not account content.
+model AdministratorGuard {
+  id Int @id @default(1)
+}
+
 model User {
   id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   username           String   @db.VarChar(32)
