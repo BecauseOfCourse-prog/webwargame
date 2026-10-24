@@ -2,25 +2,25 @@
 
 Updated: 2026-10-24
 
-Status: Current implemented-state overview after T01–T06 and verification. B02/M0 and registration/session APIs are complete; account forms and role guards remain later tasks. Update this document as later tasks change the architecture.
+Status: Current implemented-state overview after T01–T07 and verification. B02/M0 and B03/B04 account flows are complete; role guards remain T08 and M1 is not yet complete. Update this document as later tasks change the architecture.
 
 ## 1. Purpose and document boundaries
 
 Web Wargame is a browser service for the owner's group of friends to play a turn-based tabletop wargame. There is no current commercial launch plan. Favor low recurring cost, one host and straightforward maintenance. The owner is learning alongside development: explain important technical decisions in Russian while keeping repository documentation in English.
 
-This document is the entry point for current technical context. [Specification 0001](0001-project-specification.md) retains the original requirements, proposed architecture and open gameplay questions. It is not evidence that all planned capabilities exist. The [product backlog](../product-backlog.md) defines feature scope; the [implementation backlog](../implementation-backlog.md) owns task status. [T01](0003-t01-workspace.md), [T02](0004-t02-local-database.md), [T03](0006-t03-repeatable-checks.md), [T04](0007-t04-local-workflow.md), [T05](0008-t05-registration.md) and [T06](0009-t06-sessions.md) describe individual increments. Reviews record findings; verification reports record checks actually performed.
+This document is the entry point for current technical context. [Specification 0001](0001-project-specification.md) retains the original requirements, proposed architecture and open gameplay questions. It is not evidence that all planned capabilities exist. The [product backlog](../product-backlog.md) defines feature scope; the [implementation backlog](../implementation-backlog.md) owns task status. [T01](0003-t01-workspace.md), [T02](0004-t02-local-database.md), [T03](0006-t03-repeatable-checks.md), [T04](0007-t04-local-workflow.md), [T05](0008-t05-registration.md), [T06](0009-t06-sessions.md) and [T07](0010-t07-account-interface.md) describe individual increments. Reviews record findings; verification reports record checks actually performed.
 
 ## 2. Product scope and present state
 
 | Capability | Present state |
 | --- | --- |
-| Browser shell and real server request | Implemented in T01. A Russian welcome page displays connection status and allows retry. |
+| Browser shell and real server request | Introduced in T01; T07 adds the Russian account interface and retains a compact health indicator with retry. |
 | Local persistence and configuration | Implemented in T02: PostgreSQL, Prisma, migrations, private local settings, startup validation and readiness. |
 | Repeatable checks and repository CI | Implemented and published in T03, including the reviewed runtime correction. Clean frozen installation and all local lint/type/build/test checks pass under Node 22.22.3. Remote CI status remains unverified after publication. |
 | Documented local workflow | Completed in T04: clean-checkout setup, browser/API demonstration, normal Windows terminal stop/restart, built preview and retained database state were verified. |
 | Player registration API | Implemented in T05: persisted users, normalized unique usernames, Argon2id password hashes, strict validation and bounded attempts/work. Always creates a player, without a session or game access. |
 | Login/current-user/logout API | Implemented in T06: PostgreSQL-backed revocable sessions, server expiry, protected cookies, Origin/CSRF controls and login quotas. |
-| Account forms | Planned, T07. No registration/login UI or authenticated browser shell exists yet. |
+| Account forms | Implemented in T07: Russian registration/login, signed-in shell, refresh restoration, clear errors, expiry and logout; phone-width forms retain the approved visual style. |
 | Administrator/player permissions | Planned, T08/T11/T17. No application permission system exists yet. |
 | Illustrated rules and admin catalogs | Planned, T09–T16. No uploads, rules editor or catalog UI exists. |
 | Shared board, unit inspection and movement | Planned, T18–T23/T28–T29. Konva is confirmed but not installed. |
@@ -29,7 +29,7 @@ This document is the entry point for current technical context. [Specification 0
 | Applying combat losses | Optional T39, outside the required calculator scope. |
 | Production deployment and off-host backups | Planned, T35–T38. No production service has been deployed. |
 
-T01–T06 and the foundation parent B02/M0 are Done. T04's runtime checks occurred on 2026-10-23; completion documentation was finalized on 2026-10-24. T05/T06 were implemented/verified on 2026-10-24. Public registration, ASCII username policy and seven-day absolute / 24-hour idle sessions are owner-confirmed; B03/B04 still need the T07 browser flow. Content administration and gameplay are not implemented. Private games, two sides, voting freeze and the proposed 2–8-player capacity envelope remain assumptions rather than approved gameplay rules.
+T01–T07, the foundation parent B02/M0 and account parents B03/B04 are Done. T04's runtime checks occurred on 2026-10-23; completion documentation was finalized on 2026-10-24. T05–T07 were implemented/verified on 2026-10-24. Public registration, ASCII username policy and seven-day absolute / 24-hour idle sessions are owner-confirmed. M1 still needs T08 backend role enforcement and administrator bootstrap. Content administration and gameplay are not implemented. Private games, two sides, voting freeze and the proposed 2–8-player capacity envelope remain assumptions rather than approved gameplay rules.
 
 ## 3. Stack and reasons
 
@@ -38,7 +38,7 @@ T01–T06 and the foundation parent B02/M0 are Done. T04's runtime checks occurr
 | Runtime | Node.js `^22.22.3` or `^24.15.0`; reference `.node-version` 22.22.3 | Corrected after the old 22.22.0 reference failed strict engine validation. Clean frozen installation and full checks passed with pnpm itself and child commands both on portable 22.22.3. All locked engine declarations accept the range; this is not a full execution matrix. The owner's system Node was not replaced. |
 | Language | TypeScript 5.9.3, strict settings | Share types and eventually pure game logic. Runtime data/configuration still needs validation. |
 | Workspace | pnpm 11.25.0, four private packages, committed lockfile | Local `workspace:*` links and ordered builds avoid separate package releases. No Nx/Turborepo is required. |
-| Browser | React/React DOM 19.3.1, Vite 8.3.5, React plugin 6.1.2 | Stateful browser UI and development/build tooling without server rendering. Current scope is a single page. |
+| Browser | React/React DOM 19.3.1, Vite 8.3.5, React plugin 6.1.2 | Single-page account views with native fetch, an in-memory session controller and same-origin Web Locks for cookie-changing actions. No router, form/cache library or new runtime dependency is needed for T07. |
 | API | NestJS 12.2.0, local CLI 12.0.10, Express adapter | One structured backend with lifecycle hooks and room for feature modules. No global CLI or second backend service is needed. |
 | Database | Official PostgreSQL 18.6 bookworm image | Transactions and relational game/account data fit the future model. One local database avoids a managed-service bill. |
 | Persistence tools | Prisma CLI/client/pg adapter 7.10.1 | Versioned migrations and generated ESM client. SQL probes work without introducing dummy domain models. PostgreSQL driver dependencies are pinned transitively by the lockfile. |
@@ -46,7 +46,7 @@ T01–T06 and the foundation parent B02/M0 are Done. T04's runtime checks occurr
 | Password storage | `argon2` 0.45.1, Argon2id, 19 MiB/two iterations/parallelism one | Library-generated salt and 32-byte encoded hash; registration hashing/login verification share two concurrent operations. Explicit native install permission; T05 fresh Windows/Linux Node 22.22.3 operations passed. No recurring service cost. Measure on the eventual host. |
 | Sessions | PostgreSQL rows and Node built-in random/SHA-256/HMAC operations | 32-byte opaque cookie bearer, stored digest only, session-bound CSRF and seven-day/24-hour expiry. No Redis, JWT package or paid service. Each authenticated check reaches the database for revocation/current user data. |
 | Styling | Plain CSS with shared semantic tokens and system fonts | Preserve the owner's approved style without a UI-kit subscription or external font service. |
-| Current tests | Node's built-in test runner, real HTTP/PostgreSQL integration | 41 database-free tests and 31 reported database cases covering authentication, registration, expiry/CSRF/races/cleanup and network failures without another test framework. |
+| Current tests | Node's built-in test runner, real HTTP/PostgreSQL integration and manual browser inspection | 67 database-free tests: 41 API and 26 browser-client/controller tests. The database suite covers 31 reported cases. T07 additionally verifies the real account flow and narrow layouts in the in-app browser; this is not the full agreed browser/device matrix. |
 | Static lint / CI | ESLint 10.13.0, `@eslint/js` 10.0.1, typescript-eslint 8.72.0, globals 17.13.0, React Hooks plugin 7.1.1; one GitHub Actions job | Exact development-only versions and committed lockfile. Recommended JS/TS correctness rules and fundamental Hooks checks; not a formatter or type-aware lint suite. CI consumes the corrected Node reference and has temporary PostgreSQL; no remote CI success yet. |
 
 Confirmed future board technology: Konva/react-konva. Proposed future tools include React Router, React Hook Form, TanStack Query, rich-text editing and Socket.IO; introduce them with their actual feature and explain the decision. Vitest/Playwright remain possible later testing choices, not installed infrastructure. Argon2id and server-side sessions are implemented in T05/T06. Redis, microservices, Kubernetes, paid monitoring, managed databases and object storage are not launch prerequisites. Local asset storage is planned, not implemented.
@@ -55,9 +55,8 @@ Confirmed future board technology: Konva/react-konva. Proposed future tools incl
 
 ```mermaid
 flowchart LR
-  Browser[React browser shell] -->|GET /api/health| Proxy[Vite dev or preview proxy]
+  Browser[React account interface] -->|health, registration and sessions| Proxy[Vite dev or preview proxy]
   Proxy --> API[NestJS on loopback]
-  Accounts[HTTP account client] -->|registration and session endpoints| API
   API -->|startup, readiness, accounts and sessions| Prisma[Prisma service and pg pool]
   Prisma --> PG[(PostgreSQL in Compose)]
   PG --- Volume[Retained named volume]
@@ -66,6 +65,8 @@ flowchart LR
 ```
 
 `apps/web` owns UI; `apps/api` owns configuration, HTTP, accounts/sessions and database access; `packages/contracts` owns shared health/readiness, registration and session contracts; `packages/game-engine` is an empty buildable rules entry point. There is no browser-to-database connection. All code uses ESM; Node packages use `NodeNext`, while the browser uses bundler module resolution. Generated Prisma TypeScript lives under ignored `apps/api/src/generated/prisma` and is built into API output. The application factory installs registration/login limits and session request protection before bounded JSON parsing and validates UTF-8 bytes before decoding; executable and integration tests share this setup.
+
+T07 keeps the public user, CSRF value and session deadlines only in memory; the browser manages the HttpOnly bearer cookie. Reload restores the session from the API before showing account content. A shared exclusive Web Lock serializes login/logout across same-origin tabs until response reconciliation completes; unsupported browsers receive an explicit compatibility message. A marker-only BroadcastChannel and visible-page/focus checks refresh other tabs without transmitting credentials. There is no authenticated heartbeat: an expiry timer clears stale UI locally, and the server remains authoritative. Session-changing requests are not automatically aborted or retried because an uncertain response can still change the cookie. Current-user GET has a ten-second bound. See [T07 decisions](0010-t07-account-interface.md).
 
 The planned architecture is server-authoritative: future moves, votes and combat application must be checked and committed by the server. Sharing an engine with browser previews will not make browser results authoritative. Current code has no game command service, revisions, event log, sockets or authorization yet.
 
@@ -79,7 +80,7 @@ The planned architecture is server-authoritative: future moves, votes and combat
 | `POST /api/auth/login` | Trusted Origin + `X-Wargame-Request: 1`, strict JSON credentials → 200/public user, CSRF, deadlines and fresh HttpOnly cookie. Generic 401, bounded 429 and sanitized 503. |
 | `GET /api/auth/me` | Cookie + custom request header → current public user/CSRF/deadlines; 401 if invalid/expired. Idle renewal is atomic/monotonic and no response changes cookies. |
 | `POST /api/auth/logout` | Cookie + trusted Origin/custom header + `X-CSRF-Token` → revoke current session then 204/expired cookie. Protection failures 403; failed revocation cannot claim success. Full [T06 contract](0009-t06-sessions.md#3-resulting-interfaces). |
-| Browser request | Relative `/api/health`, HTTP and runtime-body checks, five-second timeout, cleanup and retry. It does not currently display readiness. |
+| Browser requests | Same-origin registration/session requests with runtime response validation and local Russian errors. Current-user GET is bounded to ten seconds; login/logout use serialization and uncertain-outcome reconciliation rather than automatic mutation retry. The health indicator retains a five-second timeout/retry and does not display readiness. |
 
 The API validates settings and successfully queries PostgreSQL before listening. Default loopback ports: API 3000, frontend development 5173, built preview 4173 and PostgreSQL 5432. `API_PORT` configures the API and Vite proxy target. Private database settings are not injected into frontend assets.
 
@@ -99,6 +100,8 @@ T06 login applies separate ten/socket and 100/global attempt budgets plus five/n
 
 The owner-approved UI uses deep green `#172724`, surface green `#1d302b`, ivory `#f5f0e5`, muted green-grey `#c1cec7` and sand/gold `#d6b67a`. Reuse CSS tokens, serif display headings, system UI fonts, restrained borders and rounded panels. See the [style guide](../design/interface-style.md) for the complete palette, responsive layout and component rules. Do not recolor uploaded maps/unit art to match the UI.
 
+T07 preserves these colors and adds account panels, persistent field labels/hints/errors, keyboard focus, loading states, password visibility and confirmation. Input borders reuse the stronger muted token. The two-column account layout becomes one column below 900 px. The owner confirmed Russian interface copy and current desktop Chrome/Edge/Firefox as primary browsers, with usable account forms on phones. Full phone board play remains an open later decision; the in-app browser checks do not constitute native-phone or three-browser certification.
+
 Foundation verification included frozen installation, type/build checks, ten configuration/startup/local-target tests, one database-network integration test, migration status and opt-in persistence checks. See [T01 evidence](../verification/t01-workspace.md), [T02 evidence](../verification/t02-local-database.md) and the [combined code review](../reviews/0003-t01-t02-code-review.md). Later T05/T06 suites are recorded below. No CI success, production readiness or complete accessibility matrix is claimed.
 
 T03 adds `pnpm lint`, `pnpm test` (the existing configuration suite; build first when run alone) and `pnpm check` (lint → typecheck → build → test). `check` needs neither `.env` nor a running database. It passed in both the main checkout and an isolated credential-free source copy with a separate frozen cached installation. A temporary intentional `string`-to-`number` assignment in that copy made root type checking exit 1 with TS2322; the restored copy passed. See [T03 evidence](../verification/t03-repeatable-checks.md).
@@ -113,11 +116,13 @@ T05 introduced fourteen registration/hash/limiter tests, bringing that increment
 
 T06 adds fourteen auth/token/cookie tests and three configuration tests: root `pnpm check` passes 41 tests in the main and fresh credential-free Windows sources under Node 22.22.3/pnpm 11.25.0. A new frozen installation was verified as the fresh copy's first dependency operation. After [Review 0007](../reviews/0007-t06-code-review.md), the final database suite passed 31 cases: seventeen auth scenarios, eleven registration scenarios, their two parents and readiness. A controlled-lock regression reproduced/fixed cleanup deleting a newly renewed session; the outer DELETE now rechecks expiry. Dual expiry, CSRF, cookies, rotation/restart/role reads, logout races, parsing/limits and bounded cleanup also passed. Main migration/status remains current. [T06 evidence](../verification/t06-sessions.md) distinguishes initial fresh-copy results from post-fix checks. CI invokes the expanded suite; no remote CI, new Linux execution or browser account form is claimed.
 
+T07 extends the root suite with `pnpm test:web`. After [Review 0008](../reviews/0008-t07-code-review.md), twelve account-client and fourteen session-controller tests bring the database-free total to 67; the database suite also passed 31 cases. Review corrections preserve cross-tab invalidation through failed queued login, explain unconfirmed registration and wrap long signed-in usernames. Initial browser checks exercised registration and validation/confirmation/duplicate errors, failed and case-insensitive successful login, reload restoration, two-tab logout, forced server expiry and offline recovery. A real iframe harness checked 320/390/768 px layouts; a 128-code-point emoji password registered and logged in by keyboard at 320 px. Post-review long-name checks fit 305/305 usable/scroll pixels in a 320 px viewport. See [T07 evidence](../verification/t07-account-interface.md) for separately scoped initial and reviewed checks. No new dependency, schema, migration, production deployment or remote CI success is included.
+
 ## 7. Constraints and next decisions
 
 - Resolve Q01–Q06 before rule-dependent movement/turn/combat completion: written rules, representative units/maps, geometry, ownership, visibility, turn semantics, voting and worked combat examples.
-- Resolve UI language/device expectations with Q08; Russian shell copy does not close that decision.
-- Q07 registration/session policy is resolved in T05/T06; rules visibility remains open before T14. Q08 still blocks final account UI expectations.
+- Q08 is partially resolved: Russian UI, current desktop Chrome/Edge/Firefox and phone-usable account forms are confirmed. Full phone board play and later browser/device verification remain open for gameplay tasks.
+- Q07 registration/session policy is resolved in T05/T06; rules visibility remains open before T14. T08 role enforcement/bootstrap can proceed after T07.
 - Confirm monthly budget, group size, host and off-host backup destination before deployment; no provider has been selected or paid service authorized.
 
 Maintain this overview with each completed increment, the incremental specification with behavior changes, and the task-status register with linked evidence. Historical reviews/reports remain historical; record follow-up corrections explicitly instead of rewriting past checks as if they were rerun.
@@ -126,7 +131,7 @@ Maintain this overview with each completed increment, the incremental specificat
 
 The owner requires a change specification and an update to this general context after every coherent change. Follow [Specification 0005](0005-development-documentation.md): create a numbered specification for each new task/change, update it through implementation/review, document actual verification, and link it from task completion evidence. Features, fixes, refactors, configuration/dependency/tooling and development-policy changes are included. A task cannot be Done with a missing/stale specification or context; include documentation with source changes when committing.
 
-Latest update (2026-10-24): the owner-requested [T06 review](../reviews/0007-t06-code-review.md) fixes a reproduced cleanup/renewal race by rechecking expiry on the DELETE target after a lock wait. [The T06 specification](0009-t06-sessions.md) and [evidence](../verification/t06-sessions.md) include the correction and passing 41/31-test suites. Independent persistence/HTTP reviews found no remaining actionable defect. T07 must serialize browser login/logout actions because explicit cookie-changing responses can arrive out of order. Final local link, credential, migration and test-data checks passed. Schema, dependencies and visual style are unchanged by this review correction. Commit/push is explicitly authorized after final checks; no deployment is included. [Specification 0005](0005-development-documentation.md) continues to govern documentation maintenance.
+Latest update (2026-10-24): the owner-requested [T07 review](../reviews/0008-t07-code-review.md) corrected three reproduced P2 defects: lost cross-tab invalidation during failed login, misleading registration recovery advice and long-name overflow. [Specification 0010](0010-t07-account-interface.md) and [verification](../verification/t07-account-interface.md) include the corrections, 67-test root suite, 31 database cases and actual layout checks. No unresolved actionable finding remains. B03/B04 are complete; T08 is next and M1 remains incomplete. No dependency/schema/migration change or deployment is included. The owner explicitly authorized commit/push after final checks. [Specification 0005](0005-development-documentation.md) continues to govern documentation maintenance.
 
 The owner-requested [T05 review](../reviews/0006-t05-code-review.md) found and corrected one P2 decoding defect: invalid UTF-8 could be replaced before password validation. Raw-byte verification now rejects it and other charsets. Post-correction root/database checks passed; no unresolved review finding remains. The existing T05 specification/evidence include the correction, and commit/push is owner-authorized after final verification. No schema/dependency change or deployment is added by the correction.
 

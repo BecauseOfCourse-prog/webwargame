@@ -19,13 +19,14 @@
     "test:config": "pnpm --filter @webwargame/api test:config",
     "test:registration": "pnpm --filter @webwargame/api test:registration",
     "test:auth": "pnpm --filter @webwargame/api test:auth",
+    "test:web": "pnpm --filter @webwargame/web test",
     "test:database": "pnpm --filter @webwargame/api test:database",
     "build:packages": "pnpm --filter \"./packages/*\" run build",
     "dev": "pnpm build:packages && pnpm --parallel -r run dev",
     "build": "pnpm -r run build",
     "typecheck": "pnpm build:packages && pnpm -r run typecheck",
     "lint": "eslint . --max-warnings 0",
-    "test": "pnpm test:config && pnpm test:registration && pnpm test:auth",
+    "test": "pnpm test:config && pnpm test:registration && pnpm test:auth && pnpm test:web",
     "check": "pnpm lint && pnpm typecheck && pnpm build && pnpm test"
   },
   "devDependencies": {

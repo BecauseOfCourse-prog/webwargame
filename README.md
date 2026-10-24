@@ -1,6 +1,6 @@
 # Wargame Web Service
 
-A multiplayer, turn-based tabletop wargame service, with local foundations and registration/login/session APIs.
+A multiplayer, turn-based tabletop wargame service, with local foundations and a working registration/login/session interface.
 
 Built for the owner's group of friends, with no current commercial launch plan. Favor low recurring cost and simple maintenance: one host, local persistent uploads, self-hosted PostgreSQL, and off-host backups. No paid application service is required by the initial design.
 
@@ -16,6 +16,7 @@ Built for the owner's group of friends, with no current commercial launch plan. 
 - [T04 change specification](docs/specs/0007-t04-local-workflow.md): local setup, shutdown, migration and troubleshooting workflow.
 - [T05 change specification](docs/specs/0008-t05-registration.md): player accounts, password protection and registration API.
 - [T06 change specification](docs/specs/0009-t06-sessions.md): login, server-side sessions, expiry and CSRF/origin protection.
+- [T07 change specification](docs/specs/0010-t07-account-interface.md): Russian account forms, signed-in shell and coordinated browser session state.
 - [Initial project specification](docs/specs/0001-project-specification.md): proposed stack, architecture, domain model, game-state consistency, and decisions requiring clarification.
 - [Product backlog](docs/product-backlog.md): traceable requirements, priorities, acceptance criteria, and delivery sequence.
 - [Implementation backlog](docs/implementation-backlog.md): actionable tasks, current statuses, open decisions, and the first development iteration.
@@ -34,8 +35,10 @@ Built for the owner's group of friends, with no current commercial launch plan. 
 - [T05 code review](docs/reviews/0006-t05-code-review.md): corrected UTF-8 decoding defect and post-correction checks.
 - [T06 verification](docs/verification/t06-sessions.md): clean root checks, real session/expiry/CSRF/race/cleanup tests and local migration.
 - [T06 code review](docs/reviews/0007-t06-code-review.md): corrected cleanup/renewal race and controlled PostgreSQL regression.
+- [T07 verification](docs/verification/t07-account-interface.md): client/controller tests, real account flow, expiry/recovery and narrow-layout checks.
+- [T07 code review](docs/reviews/0008-t07-code-review.md): corrected queued-login synchronization, registration recovery guidance and long-name overflow.
 
-All project documentation is in English. T01 provides a browser shell and a real backend health request; T02 adds PostgreSQL, Prisma, migration history and validated environment configuration; T03 adds repeatable checks/CI; T04 verifies the local workflow. T05 adds player registration and T06 adds login/current-user/logout with persisted revocable sessions. Account forms, board interaction and game rules remain future tasks. Initial interface copy is Russian for the owner's walkthrough; Q08 still governs the eventual UI language/device scope.
+All project documentation is in English. T01 provides a browser shell and a real backend health request; T02 adds PostgreSQL, Prisma, migration history and validated environment configuration; T03 adds repeatable checks/CI; T04 verifies the local workflow. T05/T06 add player registration and revocable sessions; T07 supplies registration/login forms, a signed-in shell and logout. The owner confirmed Russian UI, current desktop Chrome/Edge/Firefox as primary browsers and usable account forms on phones. Full phone board play remains open under Q08. Role enforcement, board interaction and game rules remain future tasks.
 
 The initial scope includes username/password accounts, administrator and player roles, illustrated rules, a shared interactive battle map, movement validation, turn management, unit inspection, a combat calculator, and administration of content and permissions.
 
@@ -212,9 +215,10 @@ pnpm check
 | `pnpm lint` | ESLint correctness rules for maintained JS/TS, including React Hooks; any warning fails. |
 | `pnpm typecheck` | Build shared packages and check all workspace TypeScript, including Prisma client generation. |
 | `pnpm build` | Build shared packages, compiled API and browser assets. |
-| `pnpm test` | Run 41 database-free configuration/startup/local-target, registration and authentication/security tests against compiled API output; build first when running separately. |
+| `pnpm test` | Run 67 database-free tests: 41 API configuration/startup/local-target, registration and authentication/security tests plus 26 account-client/controller tests; build first when running separately. |
 | `pnpm test:registration` | Run the fourteen database-free registration/hash/limiter tests after building. |
 | `pnpm test:auth` | Run the fourteen database-free login/token/cookie/CSRF/capacity/failure tests after building. |
+| `pnpm test:web` | Run twelve browser account-client and fourteen session-controller tests with Node's built-in runner; build shared contracts first when running separately. No browser installation or database required. |
 | `pnpm check` | Run lint, typecheck, build and `test` in that order; no `.env`, production secrets or running database required. |
 
 After building, `pnpm test:database` additionally checks real HTTP registration/authentication and readiness during a PostgreSQL network interruption. It requires local configuration and a running loopback database, with a URL without query parameters or a fragment. The local bootstrap/CI user must be able to create/drop databases: registration/authentication tests create separate random `t05_registration_*` / `t06_auth_*` databases, apply migrations twice and drop only their own database during cleanup. They start temporary API listeners/proxy and do not replace the database container or insert test accounts into the project database.
@@ -231,7 +235,7 @@ After `pnpm db:migrate`, `POST /api/auth/register` accepts uncompressed UTF-8 `a
 
 Success returns 201 with `user` containing only `id`, `username`, `role: PLAYER` and `createdAt`. Invalid fields return 400 with field errors; duplicates 409; bodies over 4 KiB 413; unsupported media/encoding 415. Attempts are limited to ten per socket address and 100 globally per 15-minute fixed window; 429 includes `Retry-After`. All requests through Vite share its loopback address. Forwarding headers are ignored; counters are process-local and reset on API restart. Two concurrent registration hashes are allowed; exhausted hashing capacity/database failure returns generic 503. See [the full contract and tradeoffs](docs/specs/0008-t05-registration.md).
 
-Registration creates a player account without a session or game membership. Use the T06 session API below to log in; browser forms remain T07 and administrator provisioning T08. Registration and login share a maximum of two concurrent Argon2 operations. The welcome page and approved visual style are unchanged.
+Registration creates a player account without a session or game membership. The T07 browser form returns to explicit login after success; administrator provisioning remains T08. Registration and login share a maximum of two concurrent Argon2 operations. The account interface preserves the approved visual style.
 
 ### Login and sessions API (T06)
 
@@ -247,7 +251,15 @@ All session requests send `X-Wargame-Request: 1`. Login/logout also send `Origin
 
 Cookies are host-only, Path `/`, HttpOnly and SameSite Lax. HTTPS uses Secure `__Host-wargame.sid`; local HTTP uses `wargame.sid`. PostgreSQL stores only the digest of the random bearer. Sessions expire after seven days or 24 hours without authenticated API activity; activity cannot extend the absolute limit. Logout revokes the current token immediately. Expired rows are cleaned every 15 minutes, at most 1000 per pass; expired access is refused regardless of cleanup.
 
-Unknown/wrong/invalid credentials use generic 401; session failure uses 401, Origin/CSRF failure 403, and capacity/database failures sanitized 503. Login limits count ten attempts per socket address and 100 globally per 15 minutes, plus five per normalized account, including successful attempts. 429 includes `Retry-After`. Counters are process-local; Vite/proxy users share an address quota. Keep passwords and bearer/CSRF tokens out of logs/history. See [the full contract and limits](docs/specs/0009-t06-sessions.md). Browser forms and the full browser flow remain T07.
+Unknown/wrong/invalid credentials use generic 401; session failure uses 401, Origin/CSRF failure 403, and capacity/database failures sanitized 503. Login limits count ten attempts per socket address and 100 globally per 15 minutes, plus five per normalized account, including successful attempts. 429 includes `Retry-After`. Counters are process-local; Vite/proxy users share an address quota. Keep passwords and bearer/CSRF tokens out of logs/history. See [the full contract and limits](docs/specs/0009-t06-sessions.md).
+
+### Browser account interface (T07)
+
+Open the development frontend at [127.0.0.1:5173](http://127.0.0.1:5173) after starting the API and Vite. Use **Регистрация** to create a player, then **Вход** with the chosen password. Registration asks for confirmation and shows field errors; it does not grant access to a game. A successful login displays the current username and role. **Выйти** revokes the current session. Roles are displayed only; server role guards and administrator bootstrap remain T08.
+
+The browser restores a valid session on reload and checks again when the page becomes visible or focused. Session/CSRF data stay in memory; the bearer remains in the HttpOnly cookie. Same-origin Web Locks serialize login/logout across tabs and a marker-only BroadcastChannel prompts session refresh. Current desktop Chrome/Edge/Firefox are the agreed targets; a browser without the required session coordination receives an explicit compatibility message. Account layouts were inspected at phone widths in the in-app browser; the full browser/native-phone matrix remains later verification.
+
+There is no automatic authenticated heartbeat, so leaving a page open does not keep the server session alive. Local expiry clears the signed-in view. Current-user reads time out after ten seconds; login/logout wait for the response and reconcile an uncertain result before allowing another cookie-changing action. They are not automatically retried. If a mutation appears stuck, refresh the page and check the server session rather than assuming success. See [T07 behavior and tradeoffs](docs/specs/0010-t07-account-interface.md) and [verification](docs/verification/t07-account-interface.md).
 
 ### Compiled application preview
 
@@ -270,7 +282,7 @@ pnpm --filter @webwargame/api start
 pnpm --filter @webwargame/web preview
 ```
 
-Open [the built frontend preview](http://127.0.0.1:4173), check the connection result and retry button, then stop both terminal commands with Ctrl+C, answering `Y` if prompted. Before returning to `pnpm dev` in Terminal 1, remove its preview override with `Remove-Item Env:PUBLIC_ORIGIN` (or use a new terminal), so development uses its configured/default origin. Vite preview is a local build inspection tool; production deployment remains separate work.
+Open [the built frontend preview](http://127.0.0.1:4173), inspect the account interface and connection check, then stop both terminal commands with Ctrl+C, answering `Y` if prompted. Its login/logout requests require the API's matching preview `PUBLIC_ORIGIN`. Before returning to `pnpm dev` in Terminal 1, remove its preview override with `Remove-Item Env:PUBLIC_ORIGIN` (or use a new terminal), so development uses its configured/default origin. Vite preview is a local build inspection tool; production deployment remains separate work.
 
 ## Troubleshooting
 
@@ -324,13 +336,13 @@ Work through these checks in order:
 5. If authentication fails after `.env` was replaced, restore the settings that initialized the retained volume. Changing `POSTGRES_PASSWORD` in `.env` does not change an existing database role's password. A deliberate role-password change must also update the matching connection settings; deleting the volume is not a password-repair step.
 6. Once the connection works, run `pnpm db:migrate` and `pnpm db:status`, then restart `pnpm dev` and check `/api/ready`.
 
-If the browser reports a connection error while direct API health works, check the configured `API_PORT` and restart Vite to reload its proxy target. If health succeeds but readiness fails, continue database diagnosis: the welcome page currently displays liveness only.
+If the browser reports a connection error while direct API health works, check the configured `API_PORT` and restart Vite to reload its proxy target. If health succeeds but readiness fails, continue database diagnosis: the footer connection indicator reports liveness only. An unavailable account check has its own retry state and does not prove that the session has expired. If login/logout is rejected by Origin protection, use the exact frontend address matching `PUBLIC_ORIGIN`, including the port.
 
 ## Workspace layout
 
 | Path | Responsibility |
 | --- | --- |
-| `apps/web` | React/Vite browser shell and connection status. |
+| `apps/web` | React/Vite account forms, signed-in shell, in-memory session coordination and connection status. |
 | `apps/api` | NestJS server, validated settings, Prisma/migrations, health/readiness, registration and protected session APIs. |
 | `packages/contracts` | Shared health/readiness, registration and session types/routes, plus the health response guard. |
 | `packages/game-engine` | Buildable entry point reserved for approved movement/combat rules; currently exports no rules. |

@@ -17,14 +17,14 @@ The token definitions in [styles.css](../../apps/web/src/styles.css) are the imp
 | `--color-background` | `#172724` | Page background; text on filled accent buttons. |
 | `--color-surface` | `#1d302b` | Cards and panels above the page background. |
 | `--color-text` | `#f5f0e5` | Main text and visible focus outline. |
-| `--color-muted` | `#c1cec7` | Descriptions, secondary labels and footer text. |
+| `--color-muted` | `#c1cec7` | Descriptions, secondary labels, footer text and essential input/secondary-control borders. |
 | `--color-accent` | `#d6b67a` | Primary actions, small emphasis and brand details. |
 | `--color-accent-hover` | `#e9c990` | Hover state of filled primary actions. |
 | `--color-border` | `#4e6159` | Subtle panel outlines and decorative separators. |
 | `--color-success` | `#8bd6a0` | Positive status. |
 | `--color-error` | `#f2ab9b` | Error status and error text on dark surfaces. |
 
-Status is always expressed in words as well as color. The subtle panel border is decorative; do not assume it gives sufficient contrast for essential input boundaries or selected board elements. Verify contrast and add an appropriate stronger token when those components are introduced.
+Status is always expressed in words as well as color. The subtle panel border is decorative; do not assume it gives sufficient contrast for essential input boundaries or selected board elements. Account inputs and secondary controls use the stronger existing `--color-muted` token for their borders; focus uses `--color-text`, and invalid input borders use `--color-error` alongside written feedback.
 
 ## Typography and layout
 
@@ -38,8 +38,8 @@ Status is always expressed in words as well as color. The subtle panel border is
 
 ## Components and interactions
 
-- Primary buttons: sand/gold fill, dark green text, modest rounding, clear hover state and visible keyboard focus. Secondary and destructive variants should inherit this system when implemented; they do not exist yet.
-- Forms: dark surfaces, persistent visible labels, readable input values and error text. Design focus/error/disabled/loading states along with the normal state.
+- Primary buttons: sand/gold fill, dark green text, modest rounding, clear hover state and visible keyboard focus. Secondary buttons use a transparent fill, ivory text and the stronger muted border; hover introduces a gold border. Controls have at least 44 px height. A destructive variant is not implemented.
+- Forms: dark surfaces, persistent visible labels, readable input values and error text. Inputs use at least 16 px text and 48 px height, with muted borders, ivory focus outlines and written field errors. Disabled/loading controls remain visible and keep their layout. Account forms sit in a panel up to 440 px wide, beside a restrained 40–64 px display heading on wide screens; the layout becomes one column on narrow screens.
 - Cards: slightly lighter green than the page, restrained border and generous inner space.
 - Navigation: compact and readable, using the same fonts and accent color. Avoid turning every navigation item into a primary action.
 - Status: show a short text message alongside an optional colored dot/icon; loading should not shift the whole layout.

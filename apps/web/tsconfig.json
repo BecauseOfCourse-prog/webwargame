@@ -7,6 +7,7 @@
     "types": ["vite/client", "node"],
     "jsx": "react-jsx",
     "isolatedModules": true,
+    "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "noEmit": true
   },
