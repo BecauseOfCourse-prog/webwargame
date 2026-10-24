@@ -3,7 +3,7 @@ import { isUtf8 } from 'node:buffer';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
-import { REGISTRATION_PATH } from '@webwargame/contracts';
+import { CURRENT_USER_PATH, LOGIN_PATH, LOGOUT_PATH, REGISTRATION_PATH } from '@webwargame/contracts';
 import { AppModule } from './app.module.js';
 import type { RuntimeConfiguration } from './config/environment.js';
 import { RegistrationLimiter } from './registration/registration-limiter.js';
@@ -27,6 +27,29 @@ export async function createApplication(configuration: RuntimeConfiguration): Pr
     }
     next();
   });
+  const loginLimiter = new RegistrationLimiter();
+  for (const path of [LOGIN_PATH, CURRENT_USER_PATH, LOGOUT_PATH]) {
+    app.use(path, (request: IncomingMessage, response: ServerResponse, next: () => void) => {
+      response.setHeader('Cache-Control', 'no-store');
+      if (path === LOGIN_PATH && request.method === 'POST') {
+        const retry = loginLimiter.consume(request.socket.remoteAddress ?? 'unknown');
+        if (retry !== undefined) {
+          response.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': String(retry) });
+          response.end(JSON.stringify({ code: 'LOGIN_RATE_LIMITED', message: 'Too many login attempts. Try again later.' }));
+          return;
+        }
+      }
+      const origin = request.headers.origin;
+      const mutation = request.method !== 'GET' && request.method !== 'HEAD';
+      if (request.headers['x-wargame-request'] !== '1' ||
+        (mutation ? origin !== configuration.publicOrigin : origin !== undefined && origin !== configuration.publicOrigin)) {
+        response.writeHead(403, { 'Content-Type': 'application/json' });
+        response.end(JSON.stringify({ code: 'CSRF_REJECTED', message: 'Request verification failed.' }));
+        return;
+      }
+      next();
+    });
+  }
   app.useBodyParser('json', {
     limit: '4kb', inflate: false,
     verify: (_request: IncomingMessage, _response: ServerResponse, body: Buffer, encoding: string) => {

@@ -15,7 +15,8 @@
     "db:verify": "node scripts/verify-database.mjs",
     "test:config": "node --test test/environment.test.mjs test/startup.test.mjs test/local-database-target.test.mjs",
     "test:registration": "node --test test/registration.test.mjs test/registration-limiter.test.mjs",
-    "test:database": "node --test test/readiness.integration.test.mjs test/registration.integration.test.mjs"
+    "test:auth": "node --test test/auth.test.mjs test/session-security.test.mjs",
+    "test:database": "node --test test/readiness.integration.test.mjs test/registration.integration.test.mjs test/auth.integration.test.mjs"
   },
   "dependencies": {
     "@nestjs/common": "12.2.0",

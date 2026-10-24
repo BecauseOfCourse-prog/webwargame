@@ -22,4 +22,18 @@ model User {
   passwordHash       String
   role               UserRole @default(PLAYER)
   createdAt          DateTime @default(now()) @db.Timestamptz(3)
+  sessions           Session[]
+}
+
+model Session {
+  tokenHash     String   @id @db.Char(64)
+  userId        String   @db.Uuid
+  createdAt     DateTime @default(now()) @db.Timestamptz(3)
+  expiresAt     DateTime @db.Timestamptz(3)
+  idleExpiresAt DateTime @db.Timestamptz(3)
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([idleExpiresAt])
 }

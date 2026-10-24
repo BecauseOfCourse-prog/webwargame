@@ -1,6 +1,6 @@
 # Wargame Web Service
 
-A multiplayer, turn-based tabletop wargame service, with local application/database foundations and a player registration API.
+A multiplayer, turn-based tabletop wargame service, with local foundations and registration/login/session APIs.
 
 Built for the owner's group of friends, with no current commercial launch plan. Favor low recurring cost and simple maintenance: one host, local persistent uploads, self-hosted PostgreSQL, and off-host backups. No paid application service is required by the initial design.
 
@@ -15,6 +15,7 @@ Built for the owner's group of friends, with no current commercial launch plan. 
 - [T03 change specification](docs/specs/0006-t03-repeatable-checks.md): root checks, ESLint and minimal GitHub Actions CI.
 - [T04 change specification](docs/specs/0007-t04-local-workflow.md): local setup, shutdown, migration and troubleshooting workflow.
 - [T05 change specification](docs/specs/0008-t05-registration.md): player accounts, password protection and registration API.
+- [T06 change specification](docs/specs/0009-t06-sessions.md): login, server-side sessions, expiry and CSRF/origin protection.
 - [Initial project specification](docs/specs/0001-project-specification.md): proposed stack, architecture, domain model, game-state consistency, and decisions requiring clarification.
 - [Product backlog](docs/product-backlog.md): traceable requirements, priorities, acceptance criteria, and delivery sequence.
 - [Implementation backlog](docs/implementation-backlog.md): actionable tasks, current statuses, open decisions, and the first development iteration.
@@ -31,8 +32,10 @@ Built for the owner's group of friends, with no current commercial launch plan. 
 - [T04 code/documentation review](docs/reviews/0005-t04-code-documentation-review.md): source/command consistency, evidence assessment and review limits.
 - [T05 verification](docs/verification/t05-registration.md): Windows/Linux frozen checks and real registration/database integration.
 - [T05 code review](docs/reviews/0006-t05-code-review.md): corrected UTF-8 decoding defect and post-correction checks.
+- [T06 verification](docs/verification/t06-sessions.md): clean root checks, real session/expiry/CSRF/race/cleanup tests and local migration.
+- [T06 code review](docs/reviews/0007-t06-code-review.md): corrected cleanup/renewal race and controlled PostgreSQL regression.
 
-All project documentation is in English. T01 provides a browser shell and a real backend health request; T02 adds PostgreSQL, Prisma, migration history and validated environment configuration; T03 adds repeatable checks/CI; T04 verifies the local workflow. T05 adds persisted player registration through the API. Login/sessions, account forms, board interaction and game rules remain future tasks. Initial interface copy is Russian for the owner's walkthrough; Q08 still governs the eventual UI language/device scope.
+All project documentation is in English. T01 provides a browser shell and a real backend health request; T02 adds PostgreSQL, Prisma, migration history and validated environment configuration; T03 adds repeatable checks/CI; T04 verifies the local workflow. T05 adds player registration and T06 adds login/current-user/logout with persisted revocable sessions. Account forms, board interaction and game rules remain future tasks. Initial interface copy is Russian for the owner's walkthrough; Q08 still governs the eventual UI language/device scope.
 
 The initial scope includes username/password accounts, administrator and player roles, illustrated rules, a shared interactive battle map, movement validation, turn management, unit inspection, a combat calculator, and administration of content and permissions.
 
@@ -110,7 +113,7 @@ Invoke-RestMethod http://127.0.0.1:3000/api/health
 Invoke-RestMethod http://127.0.0.1:3000/api/ready
 ```
 
-These probes verify process/database availability; registration is checked separately. Login and gameplay remain future work. Default ports are 5432 (database), 3000 (API), 5173 (development frontend) and 4173 (preview). All published local listeners bind to loopback. See [occupied ports](#occupied-ports) before changing them. This is a local development workflow; production hosting, HTTPS and backups remain separate tasks.
+These probes verify process/database availability; registration and sessions are checked separately. Gameplay remains future work. Default ports are 5432 (database), 3000 (API), 5173 (development frontend) and 4173 (preview). All published local listeners bind to loopback. See [occupied ports](#occupied-ports) before changing them. This is a local development workflow; production hosting, HTTPS and backups remain separate tasks.
 
 ### Daily start and stop
 
@@ -171,10 +174,10 @@ PostgreSQL's image applies initialization credentials only when its volume is em
 | `pnpm db:status` | Check migration history against the configured database. |
 | `pnpm db:migrate:dev --name describe_change` | Create/apply a reviewed development migration after editing the schema. |
 | `pnpm test:config` | After building, run configuration and real startup-failure tests. |
-| `pnpm test:database` | After building, test registration in a disposable local database and readiness during a silent network interruption; the local/CI role needs create/drop-database permission. |
+| `pnpm test:database` | After building, test registration/sessions in disposable local databases and readiness during a silent network interruption; the local/CI role needs create/drop-database permission. |
 | `pnpm db:verify` | Default `webwargame-local` project only: after building, verify clean migrations and persistence in a temporary database; recreates its PostgreSQL container, retaining the volume. |
 
-The T02 baseline migration establishes the `public` schema and migration history; T05's additive migration introduces `User` and `UserRole`. Session/game tables remain future work. When a feature requires a schema change, edit `apps/api/prisma/schema.prisma`, run `pnpm db:migrate:dev --name describe_change`, inspect its SQL and commit the schema plus the migration. Never edit an already applied migration or use `db push` as the project history. Local migrate-dev may use a shadow database; use it only against development databases.
+The T02 baseline migration establishes `public` and migration history; T05 introduces `User`/`UserRole`, and T06 adds `Session`. Game tables remain future work. When a feature requires a schema change, edit `apps/api/prisma/schema.prisma`, run `pnpm db:migrate:dev --name describe_change`, inspect its SQL and commit the schema plus the migration. Never edit an already applied migration or use `db push` as the project history. Local migrate-dev may use a shadow database; use it only against development databases.
 
 ### Where local data lives
 
@@ -209,11 +212,12 @@ pnpm check
 | `pnpm lint` | ESLint correctness rules for maintained JS/TS, including React Hooks; any warning fails. |
 | `pnpm typecheck` | Build shared packages and check all workspace TypeScript, including Prisma client generation. |
 | `pnpm build` | Build shared packages, compiled API and browser assets. |
-| `pnpm test` | Run 24 database-free configuration/startup/local-target and registration/hash/limiter tests against compiled API output; build first when running separately. |
+| `pnpm test` | Run 41 database-free configuration/startup/local-target, registration and authentication/security tests against compiled API output; build first when running separately. |
 | `pnpm test:registration` | Run the fourteen database-free registration/hash/limiter tests after building. |
+| `pnpm test:auth` | Run the fourteen database-free login/token/cookie/CSRF/capacity/failure tests after building. |
 | `pnpm check` | Run lint, typecheck, build and `test` in that order; no `.env`, production secrets or running database required. |
 
-After building, `pnpm test:database` additionally checks real HTTP registration and readiness during a PostgreSQL network interruption. It requires local configuration and a running loopback database, with a URL without query parameters or a fragment. The local bootstrap/CI user must be able to create/drop databases: registration tests create a random `t05_registration_*` database, apply migrations twice and drop only that database during cleanup. They start temporary API listeners/proxy and do not replace the database container or insert test accounts into the project database.
+After building, `pnpm test:database` additionally checks real HTTP registration/authentication and readiness during a PostgreSQL network interruption. It requires local configuration and a running loopback database, with a URL without query parameters or a fragment. The local bootstrap/CI user must be able to create/drop databases: registration/authentication tests create separate random `t05_registration_*` / `t06_auth_*` databases, apply migrations twice and drop only their own database during cleanup. They start temporary API listeners/proxy and do not replace the database container or insert test accounts into the project database.
 
 `pnpm db:verify` is a separate, opt-in persistence check for the default `webwargame-local` Compose project only. It requires the canonical loopback URL matching the Compose user/password/port/database, with no query parameters or fragment; driver query parameters can override a URL's apparent endpoint. It creates a random `t02_verify_*` database, applies migrations twice, writes a marker through Prisma, recreates the default project's PostgreSQL container, checks the marker and removes that temporary database. Container replacement briefly disconnects other API connections, so stop normal development first. The utility retains the project database and volume, but its fixed Compose project name makes it unsuitable for the [isolated second-checkout setup](#optional-second-checkout).
 
@@ -227,7 +231,23 @@ After `pnpm db:migrate`, `POST /api/auth/register` accepts uncompressed UTF-8 `a
 
 Success returns 201 with `user` containing only `id`, `username`, `role: PLAYER` and `createdAt`. Invalid fields return 400 with field errors; duplicates 409; bodies over 4 KiB 413; unsupported media/encoding 415. Attempts are limited to ten per socket address and 100 globally per 15-minute fixed window; 429 includes `Retry-After`. All requests through Vite share its loopback address. Forwarding headers are ignored; counters are process-local and reset on API restart. Two concurrent registration hashes are allowed; exhausted hashing capacity/database failure returns generic 503. See [the full contract and tradeoffs](docs/specs/0008-t05-registration.md).
 
-Registration creates a player account without a session or game membership. Login/current-user/logout and browser forms are T06/T07. Administrator provisioning is T08. The welcome page and its approved visual style are unchanged.
+Registration creates a player account without a session or game membership. Use the T06 session API below to log in; browser forms remain T07 and administrator provisioning T08. Registration and login share a maximum of two concurrent Argon2 operations. The welcome page and approved visual style are unchanged.
+
+### Login and sessions API (T06)
+
+`PUBLIC_ORIGIN` is the exact trusted browser origin. It defaults to `http://127.0.0.1:5173`, so existing `.env` files keep working. Use only one origin without a path/query/fragment; external addresses require HTTPS. HTTP is allowed only for loopback development. The initializer preserves existing settings and includes the default in new files.
+
+All session requests send `X-Wargame-Request: 1`. Login/logout also send `Origin` equal to `PUBLIC_ORIGIN` and uncompressed UTF-8 `application/json`. CORS and forwarding-header trust are not enabled.
+
+| Endpoint | Usage |
+| --- | --- |
+| `POST /api/auth/login` | JSON `{username,password}` → 200 with public `user` (`id`, `username`, `role`), `csrfToken`, `expiresAt`, `idleExpiresAt` and an HttpOnly cookie. New login rotates the presented browser session; other devices remain logged in. |
+| `GET /api/auth/me` | Browser cookie + custom header → 200 with the same session view. Optional Origin must match if supplied. No cookie is written even on 401. |
+| `POST /api/auth/logout` | Browser cookie + trusted Origin/custom header + `X-CSRF-Token` from login/current-user; JSON `{}` is sufficient → 204 and an expired cookie. |
+
+Cookies are host-only, Path `/`, HttpOnly and SameSite Lax. HTTPS uses Secure `__Host-wargame.sid`; local HTTP uses `wargame.sid`. PostgreSQL stores only the digest of the random bearer. Sessions expire after seven days or 24 hours without authenticated API activity; activity cannot extend the absolute limit. Logout revokes the current token immediately. Expired rows are cleaned every 15 minutes, at most 1000 per pass; expired access is refused regardless of cleanup.
+
+Unknown/wrong/invalid credentials use generic 401; session failure uses 401, Origin/CSRF failure 403, and capacity/database failures sanitized 503. Login limits count ten attempts per socket address and 100 globally per 15 minutes, plus five per normalized account, including successful attempts. 429 includes `Retry-After`. Counters are process-local; Vite/proxy users share an address quota. Keep passwords and bearer/CSRF tokens out of logs/history. See [the full contract and limits](docs/specs/0009-t06-sessions.md). Browser forms and the full browser flow remain T07.
 
 ### Compiled application preview
 
@@ -241,6 +261,7 @@ Then run these commands in two terminals from the same repository root:
 
 ```powershell
 # Terminal 1: compiled API
+$env:PUBLIC_ORIGIN = 'http://127.0.0.1:4173'
 pnpm --filter @webwargame/api start
 ```
 
@@ -249,7 +270,7 @@ pnpm --filter @webwargame/api start
 pnpm --filter @webwargame/web preview
 ```
 
-Open [the built frontend preview](http://127.0.0.1:4173), check the connection result and retry button, then stop both terminal commands with Ctrl+C, answering `Y` if prompted. Vite preview is a local build inspection tool; production deployment remains separate work.
+Open [the built frontend preview](http://127.0.0.1:4173), check the connection result and retry button, then stop both terminal commands with Ctrl+C, answering `Y` if prompted. Before returning to `pnpm dev` in Terminal 1, remove its preview override with `Remove-Item Env:PUBLIC_ORIGIN` (or use a new terminal), so development uses its configured/default origin. Vite preview is a local build inspection tool; production deployment remains separate work.
 
 ## Troubleshooting
 
@@ -310,8 +331,8 @@ If the browser reports a connection error while direct API health works, check t
 | Path | Responsibility |
 | --- | --- |
 | `apps/web` | React/Vite browser shell and connection status. |
-| `apps/api` | NestJS server, configuration validation, Prisma service, liveness/readiness and migrations. |
-| `packages/contracts` | Shared health/readiness types, health route and runtime response guard. |
+| `apps/api` | NestJS server, validated settings, Prisma/migrations, health/readiness, registration and protected session APIs. |
+| `packages/contracts` | Shared health/readiness, registration and session types/routes, plus the health response guard. |
 | `packages/game-engine` | Buildable entry point reserved for approved movement/combat rules; currently exports no rules. |
 
 `pnpm dev` first builds the shared packages, then starts their TypeScript watchers, the NestJS development server and Vite together. API dev/build/typecheck regenerate the ignored Prisma client. Shared packages use `workspace:*` links, so they resolve from this repository rather than a public registry. Konva, routing, sockets and form/editor libraries remain deferred to their feature tasks.

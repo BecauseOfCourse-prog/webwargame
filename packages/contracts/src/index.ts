@@ -1,5 +1,20 @@
 export const HEALTH_PATH = '/api/health';
 export const REGISTRATION_PATH = '/api/auth/register';
+export const LOGIN_PATH = '/api/auth/login';
+export const CURRENT_USER_PATH = '/api/auth/me';
+export const LOGOUT_PATH = '/api/auth/logout';
+
+export interface LoginRequest {
+  username: string;
+  password: string;
+}
+
+export interface SessionResponse {
+  user: { id: string; username: string; role: 'PLAYER' | 'ADMIN' };
+  csrfToken: string;
+  expiresAt: string;
+  idleExpiresAt: string;
+}
 
 export interface RegistrationRequest {
   username: string;

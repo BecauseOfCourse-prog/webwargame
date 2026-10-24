@@ -10,6 +10,7 @@ const content = [
   `POSTGRES_PASSWORD=${password}`,
   `DATABASE_URL=postgresql://webwargame:${password}@127.0.0.1:5432/webwargame`,
   'API_PORT=3000',
+  'PUBLIC_ORIGIN=http://127.0.0.1:5173',
   '',
 ].join('\n');
 

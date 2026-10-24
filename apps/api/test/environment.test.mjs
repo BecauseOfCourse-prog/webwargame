@@ -37,3 +37,34 @@ test('configuration errors do not reveal a supplied URL or password', () => {
       !error.message.includes(secret) && !error.message.includes(value),
   );
 });
+
+test('public origin defaults to local development and HTTPS enables secure cookies', () => {
+  const local = parseEnvironment({ DATABASE_URL: databaseUrl });
+  assert.equal(local.publicOrigin, 'http://127.0.0.1:5173');
+  assert.equal(local.secureCookies, false);
+  const secure = parseEnvironment({ DATABASE_URL: databaseUrl, PUBLIC_ORIGIN: 'https://Game.Example.test/' });
+  assert.equal(secure.publicOrigin, 'https://game.example.test');
+  assert.equal(secure.secureCookies, true);
+});
+
+test('only explicit loopback HTTP origins may use cookies without Secure', () => {
+  for (const origin of ['http://127.0.0.1:4173', 'http://localhost:5173', 'http://[::1]:5173']) {
+    const result = parseEnvironment({ DATABASE_URL: databaseUrl, PUBLIC_ORIGIN: origin });
+    assert.equal(result.publicOrigin, origin);
+    assert.equal(result.secureCookies, false);
+  }
+});
+
+test('invalid origins fail closed without exposing supplied URL credentials', () => {
+  const secret = 'origin-secret-must-not-be-logged';
+  for (const origin of ['', 'null', 'not a URL', 'http://game.example.test', 'https://game.example.test/path',
+    'https://game.example.test/?query=value', 'https://game.example.test/#fragment',
+    `https://user:${secret}@game.example.test`, 'https://one.test,https://two.test', 'ftp://127.0.0.1']) {
+    assert.throws(() => parseEnvironment({ DATABASE_URL: databaseUrl, PUBLIC_ORIGIN: origin }), (error) => {
+      assert.match(error.message, /PUBLIC_ORIGIN/);
+      assert.ok(!error.message.includes(secret));
+      assert.ok(!error.message.includes(origin) || origin === '');
+      return true;
+    });
+  }
+});
