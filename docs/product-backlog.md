@@ -1,7 +1,7 @@
 # Product Backlog
 
-Date: 2026-10-23
-Status: B02 partially implemented (T01–T03 complete, including runtime correction; T04 remains); no complete product feature yet
+Date: 2026-10-24
+Status: B02 application foundations complete (T01–T04 / M0); accounts, content administration and gameplay remain planned
 
 Architecture and requirement IDs: [Specification 0001](specs/0001-project-specification.md)
 
@@ -16,7 +16,7 @@ Confirmed audience and cost constraint: a hobby service for the owner's friends,
 | ID | Priority / source | Story or outcome | Acceptance criteria | Depends on |
 | --- | --- | --- | --- | --- |
 | B01 | P0 / R05–R09 | Define the supported game rules. | Record topology, scale, movement cost, terrain/stacking, turn sequence, consent electorate, combat formula, randomness, casualties and ownership. Attach worked examples and a stat/ability coverage matrix. Clearly identify unsupported rules. | — |
-| B02 | P0 / technical | Establish application foundations. | Web/API/shared engine workspace builds; reproducible install and version lockfile exist; configuration is documented; database migrations and CI type/lint checks run without production secrets. | — |
+| B02 | P0 / technical | Establish application foundations. **Done:** T01–T04 / M0; [T04 specification](specs/0007-t04-local-workflow.md) and [completion evidence](verification/t04-local-workflow.md). | Web/API/shared engine workspace builds; reproducible install and version lockfile exist; configuration is documented; database migrations and CI type/lint checks run without production secrets. Local checks and CI configuration are verified; remote CI status remains unverified. | — |
 | B03 | P1 / R01 | As a visitor, register using username and password. | Valid unique normalized username and acceptable password create a player account; duplicate/invalid input produces useful validation; passwords are hashed; registration cannot assign admin or private-game access; requests are rate limited. | B02 |
 | B04 | P1 / R02 | As a user, log in, log out and end expired sessions. | Valid credentials create a protected revocable session; bad credentials use generic errors; logout/expiry invalidates access; brute-force controls and CSRF/origin checks cover relevant endpoints. | B03 |
 | B05 | P1 / R03, R13 | Enforce roles and object-level access. | Player cannot invoke admin endpoints or access another private game by changing an ID; game membership, side and unit ownership are checked server-side; first-admin bootstrap is documented; last active admin is protected. | B04 |

@@ -1,8 +1,8 @@
 # Implementation Backlog
 
-Updated: 2026-10-23
+Updated: 2026-10-24
 
-Status: T01–T03 complete, including the runtime review correction; T04 ready; remaining implementation tasks have not started
+Status: T01–T04 and B02/M0 complete; remaining implementation tasks have not started
 
 Scope and acceptance criteria: [Product backlog](product-backlog.md)
 
@@ -27,15 +27,15 @@ Priority follows the parent feature: P0 discovery/foundation, P1 first playable 
 
 This is a low-cost hobby project for friends. No hosting purchase, paid service, implementation, or deployment is authorized merely by writing a task. Konva is confirmed. Other proposed technology choices should be explained when introduced, as required by AGENTS.md.
 
-All UI tasks follow the owner-approved [interface style](design/interface-style.md) and shared CSS tokens. T04 must verify that Ctrl+C in the owner's Windows terminal stops all development child processes and permits a clean restart; the earlier automated shutdown left watchers running and is recorded as an open verification gap in the [T01 code review](reviews/0002-t01-code-review.md).
+All UI tasks follow the owner-approved [interface style](design/interface-style.md) and shared CSS tokens. T04 verified that Ctrl+C in the owner's Windows terminal stops all development child processes and permits a clean restart. Its [evidence](verification/t04-local-workflow.md) closes the historical verification gap recorded in the [T01 code review](reviews/0002-t01-code-review.md); that earlier review remains historical.
 
-Current technical context: [project overview](specs/0002-project-context.md), [T01 changes](specs/0003-t01-workspace.md), [T02 changes](specs/0004-t02-local-database.md) and [T03 changes](specs/0006-t03-repeatable-checks.md). The [combined review](reviews/0003-t01-t02-code-review.md) records the two fixed T02 findings and regression checks. T03 has its own [verification evidence](verification/t03-repeatable-checks.md); the P1 finding in [Review 0004](reviews/0004-t03-code-review.md) is corrected and verified. T04 is not complete.
+Current technical context: [project overview](specs/0002-project-context.md), [T01 changes](specs/0003-t01-workspace.md), [T02 changes](specs/0004-t02-local-database.md), [T03 changes](specs/0006-t03-repeatable-checks.md) and [T04 changes](specs/0007-t04-local-workflow.md). The [combined review](reviews/0003-t01-t02-code-review.md) records the two fixed T02 findings and regression checks. T03 has its own [verification evidence](verification/t03-repeatable-checks.md); the P1 finding in [Review 0004](reviews/0004-t03-code-review.md) is corrected and verified.
 
 ## Milestones and visible outcomes
 
 | Milestone | Outcome the owner can try | Tasks | Exit condition |
 | --- | --- | --- | --- |
-| M0 — Local foundation | Start the project from documented commands and see the browser reach the backend. | T01–T04 | Clean install, build/checks, database persistence and API health demonstration. |
+| M0 — Local foundation (Done) | Start the project from documented commands and see the browser reach the backend. | T01–T04 | Clean install, build/checks, database persistence and API health demonstration passed; [T04 evidence](verification/t04-local-workflow.md) closes the local workflow. |
 | M1 — Accounts | Register, log in, log out, and access an administrator-only page with the correct account. | T05–T08 | Real persisted accounts, revocable sessions and backend role checks work. |
 | M2 — Content and setup | Upload images, publish units/maps/rules and prepare a game. | T09–T17 | Two assigned players can open a saved game with pinned content. |
 | M3 — Shared play | View the board, move units and advance turns from two browsers. | T18–T29 | Authoritative movement, turn agreement and reconnect tests pass. |
@@ -64,7 +64,7 @@ Calculator result application is not required for the first release. Discuss its
 
 ## First iteration: M0 local foundation
 
-T01–T03 are complete, including the CI-runtime correction. Next take T04. No paid infrastructure or actual game-rule implementation is needed for this iteration. While it proceeds, collect Q07/Q08 for accounts and Q01–Q06 for gameplay. M1 is the next iteration, not part of the M0 completion claim.
+T01–T04 are complete, including the CI-runtime correction and the verified local workflow. B02/M0 are Done. No paid infrastructure or actual game-rule implementation was needed for this iteration. M1 is next and still requires Q07/Q08 for accounts and interface expectations; Q01–Q06 remain open for gameplay. No account or gameplay behavior is included in the M0 completion claim.
 
 ### T01 — Create the workspace and minimal application skeleton
 
@@ -93,11 +93,12 @@ T01–T03 are complete, including the CI-runtime correction. Next take T04. No p
 
 ### T04 — Document and demonstrate the local workflow
 
-- Parent: B02. Priority: P0. Status: Ready. Depends on: T01–T03.
+- Parent: B02. Priority: P0. Status: Done. Depends on: T01–T03. Specification: [T04 local workflow](specs/0007-t04-local-workflow.md).
 - Deliver: setup instructions covering prerequisites, environment configuration, start/stop, migrations and checks, plus troubleshooting for occupied ports and database connection errors.
 - Acceptance: following instructions from a clean checkout leads to the browser/API health demonstration; no undocumented global dependency or paid account is needed. Document supported runtime versions and distinguish local setup from a future production deployment.
 - Verification: repeat the documented sequence; record outcomes. Mark B02 Done only when all B02 acceptance criteria are satisfied.
 - Learning note: walk through a browser request to the backend and explain where database data lives.
+- Completion: [clean-checkout walkthrough](verification/t04-local-workflow.md) and [change specification](specs/0007-t04-local-workflow.md). Runtime checks on 2026-10-23 passed cached frozen setup, migrations, browser health/retry/readiness, root checks/ten tests, bounded operational failures, compiled preview and isolated database stop/start persistence under Node 22.22.3. Two normal owner-operated PowerShell cycles each reached readiness and stopped all captured children/listeners with Ctrl+C and `Y`, without forced cleanup. The owner confirmed the development page on port 5173 after an earlier preview-port mix-up. Completion documentation was finalized on 2026-10-24; B02/M0 are Done. Application code, dependencies and schema are unchanged, and remote CI status remains unverified.
 
 ## M1 — Accounts and roles
 
@@ -171,7 +172,7 @@ T35–T37 may be prepared before final browser tests; actual deployment follows 
 
 ## Completion evidence and maintenance
 
-T01–T03 are Done. T03's P1 runtime correction passed fresh-install and full-check verification on 2026-10-23, restoring completion after review. Prior local/database evidence remains separately dated. B02/M0 still require T04's full local onboarding/shutdown demonstration. No remote CI success is claimed. No account, content-management or gameplay feature is complete yet.
+T01–T04 and their foundation parent B02/M0 are Done. T03's P1 runtime correction passed fresh-install and full-check verification on 2026-10-23, restoring completion after review. T04's same-day local workflow checks include two normal owner-terminal stop/restart cycles; completion documentation was finalized on 2026-10-24. Prior local/database evidence remains separately dated. No remote CI success is claimed. No account, content-management or gameplay feature is complete yet.
 
 For each completed task, add a short entry below with task ID, date, commit/artifact, checks performed and material limitations. Update affected feature criteria, decisions and specification in the same change. Move a dependent task to Ready only after all prerequisites and named inputs have been satisfied. If a task combines independently deliverable work, split it and preserve the original ID as the parent reference.
 
@@ -182,3 +183,4 @@ Required for every coherent change: create/update its numbered change specificat
 | T01 | 2026-10-22 | [Change specification](specs/0003-t01-workspace.md); [verification and source links](verification/t01-workspace.md) | Clean frozen installation, package resolution, typecheck/build, dev/proxy requests, compiled frontend/API, browser retry, unavailable-server and recovery checks passed. No database or gameplay implemented. |
 | T02 | 2026-10-22 | [Change specification](specs/0004-t02-local-database.md); [verification and source links](verification/t02-local-database.md) | Clean credential-free build, initial seven configuration/startup tests, migration history, Prisma connection, retained marker, outage/recovery and secret checks passed. Review follow-up passed ten configuration/local-target tests and one silent-network test. No domain models or backup system implemented. |
 | T03 | 2026-10-23, after review correction | [Published commit f4782e3](https://github.com/BecauseOfCourse-prog/webwargame/commit/f4782e3e888c04f9c789ad23d1ed483884cf33fd); [change specification](specs/0006-t03-repeatable-checks.md); [verification](verification/t03-repeatable-checks.md); [Review 0004](reviews/0004-t03-code-review.md) | Intentional TS2322/restoration, clean frozen installation and full lint/type/build/ten tests passed. Final Node 22.22.3 PostgreSQL migration/status/network checks passed in a disposable database. No unresolved review finding. Pushed to origin/master; remote CI status unverified (API access unavailable). No gameplay/onboarding-completion claim. |
+| T04 | 2026-10-24; runtime checks 2026-10-23 | [Change specification](specs/0007-t04-local-workflow.md); [local workflow evidence](verification/t04-local-workflow.md); [Review 0005](reviews/0005-t04-code-documentation-review.md) | Clean Git clone, cached frozen installation, setup/migrations, root checks/ten tests, browser retry, compiled preview, bounded startup failures and isolated database persistence passed under Node 22.22.3. Two normal owner-terminal cycles stopped all captured children/listeners and restarted cleanly without forced cleanup. B02/M0 complete. The 2026-10-24 review found no actionable defect; runtime checks were not repeated. Documentation/workflow maintenance only; no application, schema or dependency change and no remote CI success claim. |

@@ -1,14 +1,14 @@
 # Specification 0002: Current Project Context
 
-Updated: 2026-10-23
+Updated: 2026-10-24
 
-Status: Current implemented-state overview after T01–T03, their reviews and the verified T03 runtime correction. Update this document as later tasks change the architecture.
+Status: Current implemented-state overview after T01–T04, their reviews and the verified local workflow. B02/M0 are complete. Update this document as later tasks change the architecture.
 
 ## 1. Purpose and document boundaries
 
 Web Wargame is a browser service for the owner's group of friends to play a turn-based tabletop wargame. There is no current commercial launch plan. Favor low recurring cost, one host and straightforward maintenance. The owner is learning alongside development: explain important technical decisions in Russian while keeping repository documentation in English.
 
-This document is the entry point for current technical context. [Specification 0001](0001-project-specification.md) retains the original requirements, proposed architecture and open gameplay questions. It is not evidence that all planned capabilities exist. The [product backlog](../product-backlog.md) defines feature scope; the [implementation backlog](../implementation-backlog.md) owns task status. [T01](0003-t01-workspace.md), [T02](0004-t02-local-database.md) and [T03](0006-t03-repeatable-checks.md) describe individual implementation increments. Reviews record findings; verification reports record checks actually performed.
+This document is the entry point for current technical context. [Specification 0001](0001-project-specification.md) retains the original requirements, proposed architecture and open gameplay questions. It is not evidence that all planned capabilities exist. The [product backlog](../product-backlog.md) defines feature scope; the [implementation backlog](../implementation-backlog.md) owns task status. [T01](0003-t01-workspace.md), [T02](0004-t02-local-database.md), [T03](0006-t03-repeatable-checks.md) and [T04](0007-t04-local-workflow.md) describe individual increments. Reviews record findings; verification reports record checks actually performed.
 
 ## 2. Product scope and present state
 
@@ -17,6 +17,7 @@ This document is the entry point for current technical context. [Specification 0
 | Browser shell and real server request | Implemented in T01. A Russian welcome page displays connection status and allows retry. |
 | Local persistence and configuration | Implemented in T02: PostgreSQL, Prisma, migrations, private local settings, startup validation and readiness. |
 | Repeatable checks and repository CI | Implemented and published in T03, including the reviewed runtime correction. Clean frozen installation and all local lint/type/build/test checks pass under Node 22.22.3. Remote CI status remains unverified after publication. |
+| Documented local workflow | Completed in T04: clean-checkout setup, browser/API demonstration, normal Windows terminal stop/restart, built preview and retained database state were verified. |
 | Username/password registration and sessions | Planned, T05–T07. No user model or authentication exists. |
 | Administrator/player permissions | Planned, T08/T11/T17. No application permission system exists yet. |
 | Illustrated rules and admin catalogs | Planned, T09–T16. No uploads, rules editor or catalog UI exists. |
@@ -26,7 +27,7 @@ This document is the entry point for current technical context. [Specification 0
 | Applying combat losses | Optional T39, outside the required calculator scope. |
 | Production deployment and off-host backups | Planned, T35–T38. No production service has been deployed. |
 
-T01–T03 are Done; T04 is Ready. B02/M0 remain incomplete until the full local workflow demonstration is complete. Private games, two sides, voting freeze and the proposed 2–8-player capacity envelope remain assumptions rather than approved gameplay rules.
+T01–T04 and their foundation parent B02/M0 are Done. T04's runtime checks occurred on 2026-10-23; completion documentation was finalized on 2026-10-24. Accounts, content administration and gameplay are not implemented. Private games, two sides, voting freeze and the proposed 2–8-player capacity envelope remain assumptions rather than approved gameplay rules.
 
 ## 3. Stack and reasons
 
@@ -77,6 +78,8 @@ The root ignored `.env` is created by `pnpm env:init`; it contains a random loca
 
 The named volume `webwargame-local_postgres-data` is mounted at `/var/lib/postgresql`. Its persistence was tested across container replacement; that is not a backup or disk-failure recovery guarantee. pnpm's separate shared dependency store is also outside the source tree; it is a package cache, not application data. Git tracks manifests/lockfile, not installed packages, generated code, local credentials or volumes.
 
+T04 documents the complete first-setup/daily/update/preview workflow and optional second-checkout isolation with a stable `COMPOSE_PROJECT_NAME` plus matching published database/URL ports. An ordinary second directory is not database isolation. The optional `db:verify` utility currently fixes the default Compose project and must not be run against an isolated second-checkout setup. Its limitation is explicit in README; the default application/database behavior is unchanged.
+
 ## 6. Data, visual style and checks
 
 The current Prisma schema contains a generator and PostgreSQL datasource, with no domain models. The baseline ensures `public` exists and establishes `_prisma_migrations`. User, session, game, unit and map tables must be introduced with their corresponding feature requirements and migrations.
@@ -86,6 +89,8 @@ The owner-approved UI uses deep green `#172724`, surface green `#1d302b`, ivory 
 Current verification includes frozen installation, type/build checks, 10 configuration/startup/local-target tests, one database-network integration test, migration status and opt-in persistence checks. See [T01 evidence](../verification/t01-workspace.md), [T02 evidence](../verification/t02-local-database.md) and the [combined code review](../reviews/0003-t01-t02-code-review.md). No CI success, production readiness or complete accessibility matrix is claimed.
 
 T03 adds `pnpm lint`, `pnpm test` (the existing configuration suite; build first when run alone) and `pnpm check` (lint → typecheck → build → test). `check` needs neither `.env` nor a running database. It passed in both the main checkout and an isolated credential-free source copy with a separate frozen cached installation. A temporary intentional `string`-to-`number` assignment in that copy made root type checking exit 1 with TS2322; the restored copy passed. See [T03 evidence](../verification/t03-repeatable-checks.md).
+
+T04 repeated the documented workflow in a clean Git clone with both pnpm and its child commands using Node 22.22.3. Cached frozen installation, migrations, root checks/ten tests, browser retry, direct/proxied health and readiness, compiled preview and bounded startup failures passed. Two owner-operated PowerShell development cycles each reached readiness, then Ctrl+C and `Y` left no captured process or listener on ports 3000/5173; no forced cleanup was needed. This closes the earlier normal-terminal verification gap without changing process orchestration. Isolated PostgreSQL stop/start replaced the container while retaining the exact migration record; readiness recovered without restarting the API, and the main database remained separate. See [T04 evidence](../verification/t04-local-workflow.md) for the dated results and limits.
 
 [Review 0004](../reviews/0004-t03-code-review.md), dated 2026-10-23, reproduced the old Node 22.22.0 frozen-install failure and identified why pnpm's separate bundled runtime had masked it locally. The same-day correction raised the reference to 22.22.3 and narrowed supported ranges to match locked dependencies. A new source-only copy with no `.env` or installed dependencies passed frozen installation as its first dependency operation, retained the exact lockfile hash and passed all root checks with ten tests. The child Node and pnpm host runtime were both explicitly verified as 22.22.3. An independent engine audit and fix review found no remaining actionable issue; T03 completion is restored. See [correction evidence](../verification/t03-repeatable-checks.md#6-runtime-review-correction--2026-10-23). After the owner restarted Docker on 2026-10-23, final pre-publication checks under that selected runtime also passed the root suite, clean/idempotent migrations, migration status and one real network-failure test in an isolated local database. The test database was removed and the project schema remained current; [the new evidence](../verification/t03-repeatable-checks.md#7-final-pre-publication-postgresql-check--2026-10-23) is separate from earlier checks.
 
@@ -97,7 +102,6 @@ The [CI workflow](../../.github/workflows/ci.yml) runs the same checks on pushes
 - Resolve UI language/device expectations with Q08; Russian shell copy does not close that decision.
 - Resolve account access/session policy with Q07 before identity implementation.
 - Confirm monthly budget, group size, host and off-host backup destination before deployment; no provider has been selected or paid service authorized.
-- T04 must verify full development child-process shutdown/restart in the owner's Windows terminal. Earlier automation left watchers behind; this is an open verification gap.
 
 Maintain this overview with each completed increment, the incremental specification with behavior changes, and the task-status register with linked evidence. Historical reviews/reports remain historical; record follow-up corrections explicitly instead of rewriting past checks as if they were rerun.
 
@@ -105,4 +109,6 @@ Maintain this overview with each completed increment, the incremental specificat
 
 The owner requires a change specification and an update to this general context after every coherent change. Follow [Specification 0005](0005-development-documentation.md): create a numbered specification for each new task/change, update it through implementation/review, document actual verification, and link it from task completion evidence. Features, fixes, refactors, configuration/dependency/tooling and development-policy changes are included. A task cannot be Done with a missing/stale specification or context; include documentation with source changes when committing.
 
-Latest maintenance update (2026-10-23): [T03](0006-t03-repeatable-checks.md) passed final selected-runtime/PostgreSQL checks and was committed/pushed as `f4782e3` with owner authorization. This publication note adds commit/remote-access evidence; it does not claim a CI outcome. T03 is Done and T04 is Ready. Earlier failure/recovery evidence remains dated separately. Application API, schema, storage and approved visual style are unchanged. [Specification 0005](0005-development-documentation.md) continues to govern documentation maintenance.
+Latest maintenance update (2026-10-24): [T04](0007-t04-local-workflow.md) completes README onboarding/troubleshooting and adds a commented second-checkout setting to `.env.example`. The 2026-10-23 runtime evidence covers the clean setup, checks, normal Windows stop/restart, compiled preview and database persistence; the owner confirmed the development page at port 5173 after an earlier preview-port mix-up. Completion documentation now closes T04/B02/M0; no new runtime run on 2026-10-24 is implied. See [T04 evidence](../verification/t04-local-workflow.md). This is documentation/workflow maintenance; application API, schema, dependencies and approved visual style are unchanged. T03 publication and unavailable remote CI evidence remain separately recorded. [Specification 0005](0005-development-documentation.md) continues to govern documentation maintenance.
+
+The same-day owner-requested [T04 code/documentation review](../reviews/0005-t04-code-documentation-review.md) found no actionable defect in the changed instructions, related code or recorded acceptance evidence. It adds a review report/navigation and checks documentation links without rerunning the historical runtime suite. T04/B02/M0 remain Done; application behavior is unchanged.
