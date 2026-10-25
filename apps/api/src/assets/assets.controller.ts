@@ -1,6 +1,6 @@
 import { Controller, Get, Param, Post, Req, Res, StreamableFile, UseGuards } from '@nestjs/common';
 import type { ServerResponse } from 'node:http';
-import type { AssetResponse } from '@webwargame/contracts';
+import type { AssetLifecycleResponse, AssetResponse } from '@webwargame/contracts';
 import { RequireRoles } from '../auth/roles.decorator.js';
 import { RolesGuard } from '../auth/roles.guard.js';
 import { SessionGuard } from '../auth/session.guard.js';
@@ -34,5 +34,18 @@ export class AssetsController {
     file.setErrorLogger(() => undefined);
     file.setErrorHandler(() => { response.destroy(); });
     return file;
+  }
+
+  @Get(':id/lifecycle')
+  lifecycle(@Param('id') id: string): Promise<AssetLifecycleResponse> { return this.assets.lifecycle(id); }
+
+  @Post(':id/archive')
+  archive(@Param('id') id: string, @Req() request: AuthenticatedRequest): Promise<AssetLifecycleResponse> {
+    return this.assets.lifecycle(id, true, request);
+  }
+
+  @Post(':id/restore')
+  restore(@Param('id') id: string, @Req() request: AuthenticatedRequest): Promise<AssetLifecycleResponse> {
+    return this.assets.lifecycle(id, false, request);
   }
 }

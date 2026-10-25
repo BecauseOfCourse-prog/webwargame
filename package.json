@@ -17,6 +17,7 @@
     "db:status": "pnpm --filter @webwargame/api db:status",
     "db:verify": "pnpm --filter @webwargame/api db:verify",
     "admin:bootstrap": "pnpm --filter @webwargame/api admin:bootstrap",
+    "assets:cleanup": "pnpm --filter @webwargame/api assets:cleanup",
     "test:config": "pnpm --filter @webwargame/api test:config",
     "test:registration": "pnpm --filter @webwargame/api test:registration",
     "test:auth": "pnpm --filter @webwargame/api test:auth",

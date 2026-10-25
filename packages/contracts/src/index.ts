@@ -21,6 +21,12 @@ export interface AssetResponse {
   asset: AssetMetadata;
 }
 
+export interface AssetLifecycleResponse extends AssetResponse {
+  archivedAt: string | null;
+  unreferencedSince: string | null;
+  referenceCount: number;
+}
+
 export interface AdminOverviewResponse {
   status: 'ready';
   user: { id: string; username: string; role: 'ADMIN' };

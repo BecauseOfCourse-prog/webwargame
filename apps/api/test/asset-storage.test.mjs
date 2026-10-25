@@ -113,6 +113,7 @@ test('client-like paths and malformed identifiers cannot escape the generated fl
   for (const id of ['../sentinel', '..\\sentinel', outside, 'sentinel', `${randomUUID()}/child`, 'AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA', '00000000-0000-0000-0000-000000000000']) {
     await assert.rejects(() => instance.write(id, Buffer.from('changed')));
     await assert.rejects(() => instance.read(id, 4));
+    await assert.rejects(() => instance.remove(id));
   }
   assert.equal(await readFile(outside, 'utf8'), 'keep');
   assert.deepEqual(await readdir(join(root, 'uploads')), []);
@@ -128,6 +129,7 @@ test('reads reject missing files, metadata size mismatches and directories', asy
   const directoryId = randomUUID();
   await mkdir(join(root, 'uploads', directoryId));
   await assert.rejects(() => instance.read(directoryId, 0));
+  await assert.rejects(() => instance.remove(directoryId));
 }));
 
 test('nonregular storage roots and roots that become directory junctions fail closed', async () => fixture(async (root) => {
@@ -182,8 +184,27 @@ test('symlinked file entries cannot be read or followed while writing', async (c
   const id = randomUUID();
   if (!await makeFileSymlink(target, join(root, 'uploads', id), context)) return;
   await assert.rejects(() => instance.read(id, bytes.length));
+  await assert.rejects(() => instance.remove(id));
   await assert.rejects(() => instance.write(randomUUID(), Buffer.from('blocked')));
   assert.deepEqual(await readFile(target), bytes);
+}));
+
+test('maintenance removes only generated files and repeated removal is safe', async () => fixture(async (root) => {
+  const instance = storage(root);
+  await instance.initialize();
+  const id = randomUUID();
+  await instance.write(id, Buffer.from('owned image bytes'));
+  const sentinel = join(root, 'outside-sentinel');
+  await writeFile(sentinel, 'keep');
+  const release = await instance.beginMaintenance();
+  try {
+    await instance.remove(id);
+    await instance.remove(id);
+    await assert.rejects(() => instance.remove('../outside-sentinel'));
+    assert.equal(await readFile(sentinel, 'utf8'), 'keep');
+    assert.deepEqual((await readdir(join(root, 'uploads'))).filter((name) => !name.startsWith('.asset-')), []);
+  } finally { await release(); }
+  assert.deepEqual(await readdir(join(root, 'uploads')), []);
 }));
 
 test('insufficient free-space reserve rejects a write without creating a file', async () => fixture(async (root) => {

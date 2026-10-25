@@ -15,6 +15,12 @@ enum UserRole {
   ADMIN
 }
 
+enum AssetOwnerKind {
+  UNIT
+  MAP
+  RULES
+}
+
 // Internal singleton for the last-administrator locking protocol. The migration
 // seeds id=1 and enforces its singleton constraint; this is not account content.
 model AdministratorGuard {
@@ -41,10 +47,28 @@ model Asset {
   height       Int
   sha256       String   @db.Char(64)
   ready        Boolean  @default(false)
+  archivedAt   DateTime? @db.Timestamptz(3)
+  unreferencedSince DateTime? @default(now()) @db.Timestamptz(3)
   createdAt    DateTime @default(now()) @db.Timestamptz(3)
   uploadedBy   User     @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+  references   AssetReference[]
 
   @@index([uploadedById])
+}
+
+// Internal bindings. Future catalogs must persist their actual owner and these
+// bindings in one transaction; this registry does not create catalog content.
+model AssetReference {
+  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  assetId   String @db.Uuid
+  ownerKind AssetOwnerKind
+  ownerId   String @db.Uuid
+  slot      String @db.VarChar(64)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  asset     Asset @relation(fields: [assetId], references: [id], onDelete: Restrict)
+
+  @@unique([ownerKind, ownerId, slot])
+  @@index([assetId])
 }
 
 model Session {

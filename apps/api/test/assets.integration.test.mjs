@@ -411,7 +411,10 @@ test('private static image uploads remain bounded, persisted and administrator-o
           await delay(80);
           const busy = await upload(origin);
           safeError(busy, 429, 'ASSET_UPLOAD_BUSY');
-          assert.equal(await countAssets(), before); assert.deepEqual(await readdir(directory), []);
+          assert.equal(await countAssets(), before);
+          // T10's active marker is expected while this body remains in flight;
+          // there must still be no generated image file or metadata reservation.
+          assert.deepEqual((await readdir(directory)).filter((name) => uuid.test(name)), []);
         } finally { held.destroy(); await held.result.catch(() => {}); }
         let result;
         for (let attempt = 0; attempt < 20; attempt += 1) {

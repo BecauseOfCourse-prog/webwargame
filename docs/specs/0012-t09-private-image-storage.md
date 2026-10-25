@@ -40,4 +40,6 @@ After the review correction, fresh root checks passed 117 cases with one Windows
 
 ## 5. Limits and deferred work
 
+[T10](0013-t10-asset-lifecycle.md) subsequently extends this implemented increment with internal references, archive/restore, manual guarded cleanup and filesystem activity markers. Existing T09 metadata/content response shapes remain unchanged; its original verification above remains historical. Current lifecycle/cleanup behavior is specified in T10 rather than implied by the T09-only limitations below.
+
 T10 adds references and safe cleanup/retention; catalogs and asset UI follow T12–T14. Player visibility and game membership are not inferred from possession of an ID. Production host, container image, proxy, HTTPS and off-host backup/restore remain T35–T38. A quota is an application limit, not a filesystem partition or a defense against unrelated programs filling the host disk.

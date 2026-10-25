@@ -14,11 +14,12 @@
     "db:status": "prisma migrate status",
     "db:verify": "node scripts/verify-database.mjs",
     "admin:bootstrap": "node scripts/bootstrap-admin.mjs",
+    "assets:cleanup": "node scripts/cleanup-assets.mjs",
     "test:config": "node --test test/environment.test.mjs test/startup.test.mjs test/local-database-target.test.mjs",
     "test:registration": "node --test test/registration.test.mjs test/registration-limiter.test.mjs",
     "test:auth": "node --test test/auth.test.mjs test/session-security.test.mjs test/access.test.mjs test/bootstrap-admin.test.mjs",
-    "test:assets": "node --test test/image-input.test.mjs test/asset-storage.test.mjs",
-    "test:database": "node --test test/readiness.integration.test.mjs test/registration.integration.test.mjs test/auth.integration.test.mjs test/admin.integration.test.mjs test/assets.integration.test.mjs"
+    "test:assets": "node --test test/image-input.test.mjs test/asset-storage.test.mjs test/asset-activity.test.mjs test/asset-references.test.mjs test/cleanup-assets.test.mjs",
+    "test:database": "node --test test/readiness.integration.test.mjs test/registration.integration.test.mjs test/auth.integration.test.mjs test/admin.integration.test.mjs test/assets.integration.test.mjs test/asset-lifecycle.integration.test.mjs"
   },
   "dependencies": {
     "@nestjs/common": "12.2.0",
