@@ -1,7 +1,7 @@
 # Product Backlog
 
-Date: 2026-10-24
-Status: B02 foundations (T01–T04 / M0) and M1 accounts/global roles (T05–T08) complete; B05 game-object access, content administration and gameplay remain planned
+Date: 2026-10-25
+Status: B02 foundations (T01–T04 / M0) and M1 accounts/global roles (T05–T08) complete; T09 private-image APIs implement part of B06. B05 game-object access, content references/catalogs and gameplay remain planned.
 
 Architecture and requirement IDs: [Specification 0001](specs/0001-project-specification.md)
 
@@ -25,7 +25,7 @@ Confirmed audience and cost constraint: a hobby service for the owner's friends,
 
 | ID | Priority / source | Story or outcome | Acceptance criteria | Depends on |
 | --- | --- | --- | --- | --- |
-| B06 | P1 / R04, R10–R12 | Upload and reference game images safely. | Admin can upload supported decoded images within configured limits; invalid formats and oversized images fail safely; assets use persistent local storage outside the public web root, with metadata and authorized reads; referenced assets cannot be accidentally removed; deployment replacement preserves uploads; configure disk usage limits. | B05 |
+| B06 | P1 / R04, R10–R12 | Upload and reference game images safely. **Partial:** [T09 specification](specs/0012-t09-private-image-storage.md) and [verification](verification/t09-private-image-storage.md) implement private administrator APIs, decoded images, bounded storage/metadata and retained files after API-container replacement. T10 still owns references and safe cleanup; catalog upload/selection UI follows T12–T14. | Admin can upload supported decoded images within configured limits; invalid formats and oversized images fail safely; assets use persistent local storage outside the public web root, with metadata and authorized reads; referenced assets cannot be accidentally removed; deployment replacement preserves uploads; configure disk usage limits. | B05 |
 | B07 | P1 / R10 | As an administrator, create and edit unit definitions. | Form accepts name, image and supported movement/combat properties; invalid and unsupported abilities are rejected; publish creates a version; deployed units retain previous versions; used definitions can be archived. | B01, B06 |
 | B08 | P1 / R11 | As an administrator, add playable maps. | Upload background, set dimensions/topology/scale and required terrain/obstacles; preview alignment; invalid calibration prevents publication; versioned maps remain available to existing games. | B01, B06 |
 | B09 | P1 / R04, R12 | Read and maintain illustrated rules. | Admin can save, preview and publish text with images; players can read published content; scripts and unsafe content do not execute; drafts stay hidden; gameplay-changing publications link to a supported engine version. | B05, B06; B01 for executable rules |

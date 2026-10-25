@@ -71,5 +71,5 @@ jobs:
       - name: Check migration status
         run: pnpm db:status
 
-      - name: Test authentication, registration and database network failure handling
+      - name: Test accounts, private images and database network failure handling
         run: pnpm test:database

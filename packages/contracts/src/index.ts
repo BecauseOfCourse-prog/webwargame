@@ -4,6 +4,22 @@ export const LOGIN_PATH = '/api/auth/login';
 export const CURRENT_USER_PATH = '/api/auth/me';
 export const LOGOUT_PATH = '/api/auth/logout';
 export const ADMIN_OVERVIEW_PATH = '/api/admin/overview';
+export const ADMIN_ASSETS_PATH = '/api/admin/assets';
+
+export interface AssetMetadata {
+  id: string;
+  uploadedById: string;
+  mimeType: 'image/png' | 'image/jpeg' | 'image/webp';
+  byteSize: number;
+  width: number;
+  height: number;
+  sha256: string;
+  createdAt: string;
+}
+
+export interface AssetResponse {
+  asset: AssetMetadata;
+}
 
 export interface AdminOverviewResponse {
   status: 'ready';

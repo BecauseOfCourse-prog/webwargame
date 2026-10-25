@@ -1,6 +1,6 @@
 # Wargame Web Service
 
-A multiplayer, turn-based tabletop wargame service, with local foundations, working accounts and server-enforced administrator access.
+A multiplayer, turn-based tabletop wargame service, with local foundations, working accounts, server-enforced administrator access and private image-storage APIs.
 
 Built for the owner's group of friends, with no current commercial launch plan. Favor low recurring cost and simple maintenance: one host, local persistent uploads, self-hosted PostgreSQL, and off-host backups. No paid application service is required by the initial design.
 
@@ -18,6 +18,9 @@ Built for the owner's group of friends, with no current commercial launch plan. 
 - [T06 change specification](docs/specs/0009-t06-sessions.md): login, server-side sessions, expiry and CSRF/origin protection.
 - [T07 change specification](docs/specs/0010-t07-account-interface.md): Russian account forms, signed-in shell and coordinated browser session state.
 - [T08 change specification](docs/specs/0011-t08-administrator-access.md): administrator bootstrap, reusable server permission guards and protected landing page.
+- [T09 change specification](docs/specs/0012-t09-private-image-storage.md): private decoded images, persistent metadata, limits and durable disk reservations.
+- [T09 verification](docs/verification/t09-private-image-storage.md): image/storage checks, real HTTP/PostgreSQL authorization, quota races and container persistence.
+- [T09 code review](docs/reviews/0010-t09-code-review.md): corrected quota isolation under a stricter database default, controlled regression and publication checks.
 - [Initial project specification](docs/specs/0001-project-specification.md): proposed stack, architecture, domain model, game-state consistency, and decisions requiring clarification.
 - [Product backlog](docs/product-backlog.md): traceable requirements, priorities, acceptance criteria, and delivery sequence.
 - [Implementation backlog](docs/implementation-backlog.md): actionable tasks, current statuses, open decisions, and the first development iteration.
@@ -42,6 +45,8 @@ Built for the owner's group of friends, with no current commercial launch plan. 
 - [T08 code review](docs/reviews/0009-t08-code-review.md): authorization, bootstrap/concurrency and browser-state review with fresh checks; no actionable defect found.
 
 All project documentation is in English. T01 provides a browser shell and a real backend health request; T02 adds PostgreSQL, Prisma, migration history and validated environment configuration; T03 adds repeatable checks/CI; T04 verifies the local workflow. T05/T06 add player registration and revocable sessions; T07 supplies registration/login forms, a signed-in shell and logout. T08 adds administrator bootstrap, backend role guards and a protected administrator page, completing M1. The owner confirmed Russian UI, current desktop Chrome/Edge/Firefox as primary browsers and usable account forms on phones. Full phone board play remains open under Q08. Game-specific permissions, board interaction and game rules remain future tasks.
+
+T09 adds administrator-only image upload/read APIs and persistent local storage. Asset selection/upload forms, catalog references and cleanup remain T10/T12–T14; there is no new browser upload screen in this increment.
 
 The initial scope includes username/password accounts, administrator and player roles, illustrated rules, a shared interactive battle map, movement validation, turn management, unit inspection, a combat calculator, and administration of content and permissions.
 
@@ -169,6 +174,35 @@ pnpm dev
 
 `pnpm env:init` creates root `.env` with a cryptographically random local database password and matching connection URL. It never overwrites an existing file or prints the password. `.env.example` documents variable names with blank secret values; do not use the blank template unchanged. The root `.env` is ignored by Git. API and Prisma commands load that same file regardless of their workspace working directory; existing process environment variables take precedence. Build/client generation works without credentials or a running database.
 
+### Private image storage
+
+The API creates a private `.local/uploads` directory relative to the repository, independent of its current working directory. Restarting or rebuilding the application preserves it. Set `UPLOAD_DIRECTORY` to an absolute private persistent data directory when moving the service or replacing its checkout. Paths within repository application/source directories, the repository root, filesystem roots, symlinks and directory junctions are rejected. Do not serve this directory through Vite, a static server or a reverse-proxy alias. The service account must be able to create/read files; new POSIX directories/files use 0700/0600. On Windows, set an appropriate directory ACL; Unix mode bits do not configure Windows access.
+
+| Setting | Default | Accepted range and meaning |
+| --- | --- | --- |
+| `UPLOAD_DIRECTORY` | `<repository>/.local/uploads` | Absolute private directory, outside application/source directories. |
+| `UPLOAD_MAX_BYTES` | 10485760 (10 MiB) | 1–52428800; both incoming encoded bytes and normalized stored bytes. |
+| `UPLOAD_MAX_SIDE` | 8192 | 1–16384; maximum width or height, including orientation normalization. |
+| `UPLOAD_MAX_PIXELS` | 24000000 | 1–64000000; maximum width × height. |
+| `UPLOAD_MAX_DISK_BYTES` | 1073741824 (1 GiB) | 1–1099511627776; all physical files plus unwritten portions of pending reservations. |
+| `UPLOAD_MIN_FREE_BYTES` | 67108864 (64 MiB) | 0–1099511627776; filesystem free-space reserve in addition to outstanding writes. |
+
+Static PNG, JPEG and WebP are accepted with their exact `image/png`, `image/jpeg` and `image/webp` Content-Type. Send raw image bytes, without multipart fields or Content-Encoding compression. The server checks signatures, complete decoding, format agreement, animation, dimensions and both byte limits. Sharp normalizes EXIF orientation, converts to sRGB and strips source metadata without resizing or tinting artwork. PNG/WebP output is lossless; JPEG is re-encoded at quality 95/4:4:4 and can change pixels slightly. Encoded output can grow and exceed the byte limit. Input has a 20-second absolute deadline; decode and encode each use Sharp's 10-second native-processing timeout (not a hard whole-request wall-clock limit). One active upload pipeline per API instance bounds concurrent memory/CPU work; another receives 429.
+
+| Interface | Behavior |
+| --- | --- |
+| `POST /api/admin/assets` | Administrator cookie, trusted Origin, `X-Wargame-Request: 1`, session-bound `X-CSRF-Token`, raw supported image body → 201 `{asset}`. |
+| `GET /api/admin/assets/:id` | Current administrator cookie and request marker → `{asset}`. |
+| `GET /api/admin/assets/:id/content` | Same permissions → normalized bytes with server-derived Content-Type, generated inline filename, `private, no-store` and `nosniff`. |
+
+Metadata contains only `id`, `uploadedById`, `mimeType`, `byteSize`, `width`, `height`, normalized-byte `sha256` and `createdAt`; it exposes no filesystem path or original filename. Session/role/CSRF checks precede body consumption and authority is rechecked before reservation. Anonymous/player requests fail; knowing an ID grants no access. A future browser image view must fetch authorized bytes and use a blob URL, since `<img src>` does not attach the required request marker. Later catalog/game tasks will add content-specific player visibility.
+
+Invalid images return 400/415, limit violations 413, upload timeout 408, concurrent upload 429, unavailable storage/database 503 and exhausted quota/free space 507. Missing/invalid IDs and pending uploads return 404 after authorization. Upload responses close their HTTP connection to avoid draining rejected or interrupted bodies. Errors do not expose native decoder, path or database details. An uncertain upload response must not be retried automatically: retry can create another asset.
+
+PostgreSQL records a durable `ready=false` byte reservation under a shared advisory lock before any file write. The server exclusively creates a generated UUID file, syncs it, then marks metadata ready. POSIX additionally syncs the directory; Windows does not expose directory fsync through this Node API. Reads require ready metadata and a regular file with matching size. Orphan files and pending reservations remain counted after crashes or failed finalization, so the quota remains conservative; there is no automatic deletion/recovery in T09. Do not manually delete files or rows to free space; T10 will define safe reference-aware cleanup. All writers must share the same database, directory and limits. The initial deployment remains one backend on one host; unrelated programs can still exhaust its disk.
+
+When replacing an API container, mount the same persistent host directory or volume at the configured `UPLOAD_DIRECTORY` (for example `/var/lib/webwargame/uploads`); never store uploads solely in the container's writable layer. Retain PostgreSQL storage too. Moving to a fresh checkout requires preserving or explicitly configuring the old upload directory. A database-only backup is insufficient: T37 must coordinate database records and image files. T09 verifies a disposable API-container replacement with a retained upload bind mount; a production image/proxy/deployment remains T36.
+
 PostgreSQL's image applies initialization credentials only when its volume is empty. Keep the existing `.env` when restarting or updating; regenerating a password does not update the role in an existing database. See [database connection errors](#database-connection-errors) for diagnosis. This local bootstrap user can manage migrations and disposable verification databases; production roles are a later deployment decision.
 
 | Command | Purpose |
@@ -181,14 +215,14 @@ PostgreSQL's image applies initialization credentials only when its volume is em
 | `pnpm admin:bootstrap --username Commander` | After building/migrating, grant the first administrator role to an existing player; see [administrator access](#administrator-access-t08). |
 | `pnpm db:migrate:dev --name describe_change` | Create/apply a reviewed development migration after editing the schema. |
 | `pnpm test:config` | After building, run configuration and real startup-failure tests. |
-| `pnpm test:database` | After building, test registration/sessions/administrator access in disposable local databases and readiness during a silent network interruption; the local/CI role needs create/drop-database permission. |
+| `pnpm test:database` | After building, test registration/sessions/administrator access/private assets in disposable local databases and readiness during a silent network interruption; the local/CI role needs create/drop-database permission. |
 | `pnpm db:verify` | Default `webwargame-local` project only: after building, verify clean migrations and persistence in a temporary database; recreates its PostgreSQL container, retaining the volume. |
 
-The T02 baseline migration establishes `public` and migration history; T05 introduces `User`/`UserRole`, T06 adds `Session`, and T08 adds the singleton `AdministratorGuard` and database triggers protecting the last administrator. Game tables remain future work. When a feature requires a schema change, edit `apps/api/prisma/schema.prisma`, run `pnpm db:migrate:dev --name describe_change`, inspect its SQL and commit the schema plus the migration. Never edit an already applied migration or use `db push` as the project history. Local migrate-dev may use a shadow database; use it only against development databases.
+The T02 baseline migration establishes `public` and migration history; T05 introduces `User`/`UserRole`, T06 adds `Session`, T08 adds the singleton `AdministratorGuard` and database triggers protecting the last administrator, and T09 adds `Asset` metadata with pending disk reservations. Game tables remain future work. When a feature requires a schema change, edit `apps/api/prisma/schema.prisma`, run `pnpm db:migrate:dev --name describe_change`, inspect its SQL and commit the schema plus the migration. Never edit an already applied migration or use `db push` as the project history. Local migrate-dev may use a shadow database; use it only against development databases.
 
 ### Where local data lives
 
-The default named volume is `webwargame-local_postgres-data`, mounted at `/var/lib/postgresql` as required by the PostgreSQL 18 image. Docker manages it outside the source tree; `db:down` and container replacement retain it. Volume deletion/pruning and migration resets can destroy data and are not troubleshooting steps. A volume is not an off-host backup; backup/restore work remains in B21. Persistent uploaded assets are planned and do not yet exist.
+The default named volume is `webwargame-local_postgres-data`, mounted at `/var/lib/postgresql` as required by the PostgreSQL 18 image. Docker manages it outside the source tree; `db:down` and container replacement retain it. Volume deletion/pruning and migration resets can destroy data and are not troubleshooting steps. A volume is not an off-host backup; backup/restore work remains in B21. T09 image files live separately in the persistent private directory described under [private image storage](#private-image-storage); database and image files must be retained and backed up together.
 
 Git tracks source, schemas, migrations and the lockfile. It does not track `.env`, installed `node_modules`, generated Prisma code or package `dist` output. pnpm's shared dependency store is a package cache, not game data or a database backup.
 
@@ -219,13 +253,14 @@ pnpm check
 | `pnpm lint` | ESLint correctness rules for maintained JS/TS, including React Hooks; any warning fails. |
 | `pnpm typecheck` | Build shared packages and check all workspace TypeScript, including Prisma client generation. |
 | `pnpm build` | Build shared packages, compiled API and browser assets. |
-| `pnpm test` | Run 92 database-free tests: 58 API configuration/startup/local-target, registration, authentication/access/bootstrap tests plus 34 browser account/admin-client/controller tests; build first when running separately. |
+| `pnpm test` | Run 118 database-free cases: 84 API configuration/startup/local-target, registration, authentication/access/bootstrap and image/storage cases plus 34 browser account/admin-client/controller tests; build first when running separately. The file-symlink case is skipped on Windows when the account cannot create that link. |
 | `pnpm test:registration` | Run the fourteen database-free registration/hash/limiter tests after building. |
 | `pnpm test:auth` | Run 31 database-free login/token/cookie/CSRF/capacity/failure, access-guard and bootstrap tests after building. |
+| `pnpm test:assets` | Run thirteen decoder/body-reader and eleven filesystem/quota/reservation cases after building. Uses generated images and owned temporary directories; no database required. |
 | `pnpm test:web` | Run twelve browser account-client, fourteen session-controller and eight admin-client tests with Node's built-in runner; build shared contracts first when running separately. No browser installation or database required. |
 | `pnpm check` | Run lint, typecheck, build and `test` in that order; no `.env`, production secrets or running database required. |
 
-After building, `pnpm test:database` additionally checks real HTTP registration/authentication, administrator bootstrap/access/last-admin concurrency and readiness during a PostgreSQL network interruption. It requires local configuration and a running loopback database, with a URL without query parameters or a fragment. The local bootstrap/CI user must be able to create/drop databases: these tests create separate random `t05_registration_*` / `t06_auth_*` / `t08_admin_*` databases, apply migrations twice and drop only their own database during cleanup. They start temporary API listeners/proxy and do not replace the database container or insert test accounts into the project database.
+After building, `pnpm test:database` additionally checks real HTTP registration/authentication, administrator bootstrap/access/last-admin concurrency, private-image authorization/quota/persistence and readiness during a PostgreSQL network interruption. It requires local configuration and a running loopback database, with a URL without query parameters or a fragment. The local bootstrap/CI user must be able to create/drop databases: these tests create separate random `t05_registration_*` / `t06_auth_*` / `t08_admin_*` / `t09_assets_*` databases, apply migrations twice and drop only their own database during cleanup. Image tests also remove only their generated temporary directories. They start temporary API listeners/proxy and do not replace the database container or insert test accounts into the project database.
 
 `pnpm db:verify` is a separate, opt-in persistence check for the default `webwargame-local` Compose project only. It requires the canonical loopback URL matching the Compose user/password/port/database, with no query parameters or fragment; driver query parameters can override a URL's apparent endpoint. It creates a random `t02_verify_*` database, applies migrations twice, writes a marker through Prisma, recreates the default project's PostgreSQL container, checks the marker and removes that temporary database. Container replacement briefly disconnects other API connections, so stop normal development first. The utility retains the project database and volume, but its fixed Compose project name makes it unsuitable for the [isolated second-checkout setup](#optional-second-checkout).
 

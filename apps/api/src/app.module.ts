@@ -13,13 +13,15 @@ import { SessionService } from './auth/session.service.js';
 import { SessionGuard } from './auth/session.guard.js';
 import { RolesGuard } from './auth/roles.guard.js';
 import { AdminController } from './admin/admin.controller.js';
+import { AssetsController } from './assets/assets.controller.js';
+import { AssetsService } from './assets/assets.service.js';
 
 @Module({})
 export class AppModule {
   static register(configuration: RuntimeConfiguration): DynamicModule {
     return {
       module: AppModule,
-      controllers: [HealthController, ReadinessController, RegistrationController, AuthController, AdminController],
+      controllers: [HealthController, ReadinessController, RegistrationController, AuthController, AdminController, AssetsController],
       providers: [
         { provide: RuntimeConfiguration, useValue: configuration },
         PrismaService,
@@ -29,6 +31,7 @@ export class AppModule {
         SessionService,
         SessionGuard,
         RolesGuard,
+        AssetsService,
       ],
     };
   }

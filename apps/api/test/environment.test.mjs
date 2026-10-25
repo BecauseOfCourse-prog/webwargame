@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { parseEnvironment } from '../dist/config/environment.js';
+import { resolve } from 'node:path';
 
 const databaseUrl = 'postgresql://test_user:test_password@127.0.0.1:5432/test_database';
 
@@ -66,5 +67,32 @@ test('invalid origins fail closed without exposing supplied URL credentials', ()
       assert.ok(!error.message.includes(origin) || origin === '');
       return true;
     });
+  }
+});
+
+test('private upload defaults are bounded, absolute and immutable', () => {
+  const { uploads } = parseEnvironment({ DATABASE_URL: databaseUrl });
+  assert.equal(uploads.maxBytes, 10485760);
+  assert.equal(uploads.maxPixels, 24000000);
+  assert.equal(uploads.maxSide, 8192);
+  assert.equal(uploads.maxDiskBytes, 1073741824);
+  assert.ok(Object.isFrozen(uploads));
+  assert.equal(uploads.directory, resolve('../../.local/uploads'));
+});
+
+test('upload configuration accepts explicit limits and rejects unsafe/invalid settings without echoing values', () => {
+  const values = { DATABASE_URL: databaseUrl, UPLOAD_DIRECTORY: resolve('../../.local/test-uploads'),
+    UPLOAD_MAX_BYTES: '2000', UPLOAD_MAX_SIDE: '50', UPLOAD_MAX_PIXELS: '1000', UPLOAD_MAX_DISK_BYTES: '5000', UPLOAD_MIN_FREE_BYTES: '0' };
+  assert.deepEqual(parseEnvironment(values).uploads, { directory: values.UPLOAD_DIRECTORY,
+    maxBytes: 2000, maxSide: 50, maxPixels: 1000, maxDiskBytes: 5000, minFreeBytes: 0 });
+  for (const key of ['UPLOAD_MAX_BYTES', 'UPLOAD_MAX_SIDE', 'UPLOAD_MAX_PIXELS', 'UPLOAD_MAX_DISK_BYTES', 'UPLOAD_MIN_FREE_BYTES']) {
+    for (const value of ['', '-1', '1.5', 'not-a-number', String(1024 ** 5)]) {
+      // Empty means zero under numeric coercion; only the free-space reserve permits zero.
+      if (key === 'UPLOAD_MIN_FREE_BYTES' && value === '') continue;
+      assert.throws(() => parseEnvironment({ ...values, [key]: value }), new RegExp(key));
+    }
+  }
+  for (const directory of ['relative/private', resolve('../../'), resolve('../../apps/web/public'), resolve('../../apps/api/dist'), resolve('../../.git')]) {
+    assert.throws(() => parseEnvironment({ ...values, UPLOAD_DIRECTORY: directory }), /UPLOAD_DIRECTORY/);
   }
 });

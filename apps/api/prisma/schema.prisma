@@ -29,6 +29,22 @@ model User {
   role               UserRole @default(PLAYER)
   createdAt          DateTime @default(now()) @db.Timestamptz(3)
   sessions           Session[]
+  assets             Asset[]
+}
+
+model Asset {
+  id           String   @id @db.Uuid
+  uploadedById String   @db.Uuid
+  mimeType     String   @db.VarChar(16)
+  byteSize     Int
+  width        Int
+  height       Int
+  sha256       String   @db.Char(64)
+  ready        Boolean  @default(false)
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  uploadedBy   User     @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+
+  @@index([uploadedById])
 }
 
 model Session {
