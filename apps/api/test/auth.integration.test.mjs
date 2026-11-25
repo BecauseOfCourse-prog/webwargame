@@ -266,10 +266,13 @@ test('authentication persists bounded opaque sessions and enforces login, expiry
         await databaseOperation(() => database.user.update({ where: { id: mainUser.id }, data: { role: 'ADMIN' } }));
         try {
           const changed = await current(origin, persisted.cookie, { Origin: publicOrigin });
-          assert.equal(changed.response.status, 200);
-          assert.equal(changed.body.user.role, 'ADMIN');
+          assert.equal(changed.response.status, 401);
+          const fresh = session(await login(origin), mainUser, 'ADMIN');
+          assert.equal(fresh.body.user.role, 'ADMIN');
         } finally {
           await databaseOperation(() => database.user.update({ where: { id: mainUser.id }, data: { role: 'PLAYER' } }));
+          // Role changes revoke every session; refresh the fixture credential for later cases.
+          persisted = session(await login(origin), mainUser);
         }
       });
     });

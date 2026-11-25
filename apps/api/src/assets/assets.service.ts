@@ -131,7 +131,8 @@ export class AssetsService implements OnModuleInit {
     const tokenHash = createHash('sha256').update(token ?? '').digest('hex');
     const session = await transaction.session.findUnique({ where: { tokenHash }, include: { user: true } });
     const now = new Date();
-    if (!session || session.expiresAt <= now || session.idleExpiresAt <= now) {
+    if (!session || session.expiresAt <= now || session.idleExpiresAt <= now ||
+        session.user.suspendedAt !== null || session.user.passwordResetRequired) {
       throw new UnauthorizedException({ code: 'UNAUTHENTICATED', message: 'Sign in to continue.' });
     }
     if (session.user.role !== 'ADMIN') {

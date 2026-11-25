@@ -3,6 +3,7 @@ import { PrismaService } from '../database/prisma.service.js';
 export type AdministratorBootstrapErrorCode =
   | 'INVALID_USERNAME'
   | 'USER_NOT_FOUND'
+  | 'USER_INACTIVE'
   | 'ADMIN_ALREADY_EXISTS'
   | 'BOOTSTRAP_UNAVAILABLE';
 
@@ -40,9 +41,10 @@ export async function bootstrapAdministrator(
       if (guards !== 1) throw new AdministratorBootstrapError('BOOTSTRAP_UNAVAILABLE');
 
       const user = await transaction.user.findUnique({
-        where: { normalizedUsername }, select: { id: true, role: true },
+        where: { normalizedUsername }, select: { id: true, role: true, suspendedAt: true, passwordResetRequired: true },
       });
       if (!user) throw new AdministratorBootstrapError('USER_NOT_FOUND');
+      if (user.suspendedAt !== null || user.passwordResetRequired) throw new AdministratorBootstrapError('USER_INACTIVE');
       if (user.role === 'ADMIN') return { status: 'already-admin' };
       const otherAdministrator = await transaction.user.findFirst({
         where: { role: 'ADMIN', id: { not: user.id } }, select: { id: true },

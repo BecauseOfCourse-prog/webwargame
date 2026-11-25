@@ -271,8 +271,8 @@ test('asset references, archive and retained cleanup preserve used content on Po
         action, loss, status: result.response.status, changed: actual !== expected,
       }))));
       for (const outcome of outcomes) {
-        safeError(outcome.result, outcome.loss === 'role' ? 403 : 401,
-          outcome.loss === 'role' ? 'ACCESS_DENIED' : 'UNAUTHENTICATED');
+        // Security changes revoke the actor's session as well as its role.
+        safeError(outcome.result, 401, 'UNAUTHENTICATED');
         assert.equal(outcome.actual, outcome.expected, 'A revoked actor cannot mutate archive state after waiting.');
       }
     });

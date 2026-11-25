@@ -13,6 +13,8 @@ import { SessionService } from './auth/session.service.js';
 import { SessionGuard } from './auth/session.guard.js';
 import { RolesGuard } from './auth/roles.guard.js';
 import { AdminController } from './admin/admin.controller.js';
+import { AccountManagementService } from './admin/account-management.service.js';
+import { PasswordResetService } from './auth/password-reset.service.js';
 import { AssetsController } from './assets/assets.controller.js';
 import { AssetsService } from './assets/assets.service.js';
 import { AssetReferencesService } from './assets/asset-references.service.js';
@@ -31,6 +33,8 @@ export class AppModule {
         RegistrationService,
         AuthService,
         SessionService,
+        PasswordResetService,
+        AccountManagementService,
         SessionGuard,
         RolesGuard,
         AssetsService,

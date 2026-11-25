@@ -27,13 +27,16 @@ export class AuthService {
     let user;
     try {
       user = await this.database.user.findUnique({
-        where: { normalizedUsername }, select: { id: true, username: true, role: true, passwordHash: true },
+        where: { normalizedUsername }, select: {
+          id: true, username: true, role: true, passwordHash: true, version: true,
+          suspendedAt: true, passwordResetRequired: true,
+        },
       });
     } catch {
       throw authUnavailable();
     }
     const matches = await this.passwords.verify(user?.passwordHash ?? DUMMY_PASSWORD_HASH, input.password);
-    if (!user || !matches) throw invalidCredentials();
-    return this.sessions.create({ id: user.id, username: user.username, role: user.role }, previousToken);
+    if (!user || !matches || user.suspendedAt !== null || user.passwordResetRequired) throw invalidCredentials();
+    return this.sessions.create({ id: user.id, username: user.username, role: user.role, version: user.version }, previousToken);
   }
 }

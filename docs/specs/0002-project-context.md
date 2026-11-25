@@ -1,8 +1,8 @@
 # Specification 0002: Current Project Context
 
-Updated: 2026-10-25
+Updated: 2026-11-25
 
-Status: Current implemented-state overview after T01–T10 and verification. B02/M0, M1 accounts/roles and B06 image-storage foundation are complete; catalogs, game-specific permissions and gameplay remain later work.
+Status: Current implemented-state overview after T11. T01–T11, B02/M0, M1 accounts/roles and B06 image-storage foundation are complete; catalogs, game-specific permissions and gameplay remain later work.
 
 ## 1. Purpose and document boundaries
 
@@ -21,7 +21,7 @@ This document is the entry point for current technical context. [Specification 0
 | Player registration API | Implemented in T05: persisted users, normalized unique usernames, Argon2id password hashes, strict validation and bounded attempts/work. Always creates a player, without a session or game access. |
 | Login/current-user/logout API | Implemented in T06: PostgreSQL-backed revocable sessions, server expiry, protected cookies, Origin/CSRF controls and login quotas. |
 | Account forms | Implemented in T07: Russian registration/login, signed-in shell, refresh restoration, clear errors, expiry and logout; phone-width forms retain the approved visual style. |
-| Administrator/player permissions | T08 implements reusable server session/role guards, first-admin bootstrap, last-admin protection and a protected landing page. Account management/suspension remain T11; game-specific access remains T17. |
+| Administrator/player permissions | T08 implements reusable server session/role guards, first-admin bootstrap, last-admin protection and a protected landing page. T11 adds account management, suspension, one-time password recovery, audit history and safeguards against losing the last working administrator. Game-specific access remains T17. |
 | Private image storage and lifecycle | T09 upload/read APIs plus T10 archive/restore, internal references and manual guarded cleanup. Existing references/readability survive archive; no browser upload/cleanup screen or HTTP delete/reference-owner API. |
 | Illustrated rules and admin catalogs | Planned, T12–T16. T10 supplies the reference registry, but actual owners, rules editor and catalog UI do not exist. |
 | Shared board, unit inspection and movement | Planned, T18–T23/T28–T29. Konva is confirmed but not installed. |
@@ -150,7 +150,7 @@ The subsequent owner-requested [T10 review](../reviews/0011-t10-code-review.md) 
 
 - Resolve Q01–Q06 before rule-dependent movement/turn/combat completion: written rules, representative units/maps, geometry, ownership, visibility, turn semantics, voting and worked combat examples.
 - Q08 is partially resolved: Russian UI, current desktop Chrome/Edge/Firefox and phone-usable account forms are confirmed. Full phone board play and later browser/device verification remain open for gameplay tasks.
-- Q07 registration/session policy is resolved in T05/T06; rules visibility remains open before T14. T09 private storage and T10 lifecycle infrastructure are implemented; T11 account administration is Ready. Actual catalog owners/reference integration remain T12–T14.
+- Q07 registration/session policy is resolved in T05/T06; rules visibility remains open before T14. T09 private storage, T10 lifecycle infrastructure and T11 account administration are implemented. Actual catalog owners/reference integration remain T12–T14.
 - Confirm monthly budget, group size, host and off-host backup destination before deployment; no provider has been selected or paid service authorized.
 
 Maintain this overview with each completed increment, the incremental specification with behavior changes, and the task-status register with linked evidence. Historical reviews/reports remain historical; record follow-up corrections explicitly instead of rewriting past checks as if they were rerun.
@@ -159,7 +159,7 @@ Maintain this overview with each completed increment, the incremental specificat
 
 The owner requires a change specification and an update to this general context after every coherent change. Follow [Specification 0005](0005-development-documentation.md): create a numbered specification for each new task/change, update it through implementation/review, document actual verification, and link it from task completion evidence. Features, fixes, refactors, configuration/dependency/tooling and development-policy changes are included. A task cannot be Done with a missing/stale specification or context; include documentation with source changes when committing.
 
-Latest update (2026-10-25): T10 adds internal asset references, archive/restore, seven-day retention and manually applied guarded cleanup, completing the B06 storage foundation. [Specification 0013](0013-t10-asset-lifecycle.md) and [verification](../verification/t10-asset-lifecycle.md) record the sixth migration, original Windows/Linux checks and real CLI checks. The owner-requested [Review 0011](../reviews/0011-t10-code-review.md) corrected queued archive/restore authority after session/role revocation; a new failing-before/passing-after regression and fresh root/database checks passed 141/one Windows privilege skip and 77/77. Cleanup never age-expires activity markers; offline recovery requires verified stopped owners. Existing image metadata/content remains compatible, while actual catalog owners/UI remain T12–T14. T11 is Ready. No new dependency, paid service, browser screen or deployment is included; T10 commit/push is now explicitly owner-authorized after final checks. [Specification 0005](0005-development-documentation.md) continues to govern documentation maintenance.
+Latest update (2026-11-25): T11 adds account APIs/admin UI, one-time password recovery, immutable audit, session revocation and last-working-admin safeguards; see [Specification 0014](0014-t11-account-management.md). Root `pnpm check` passed, the PostgreSQL integration suite passed 92/92 including disposable migration reapplication, and browser review covered the authenticated admin workflows at desktop and 390 × 844 widths using synthetic data. The reset form's empty-input validation passed locally; successful reset redemption is covered by the API suite, while no new password was entered in the browser. See [T11 verification](../verification/t11-account-management.md). No T11 commit/push or real-account modification has occurred. [Specification 0005](0005-development-documentation.md) continues to govern documentation maintenance.
 
 T08's owner-requested [Review 0009](../reviews/0009-t08-code-review.md) found no actionable defect and its separately dated fresh root/database runs passed 92/44. Last-administrator protection and the minimal panel remain implemented; the panel conservatively uses its last known session deadline, so future regularly active pages must reconcile deadlines. T08 publication was separately owner-authorized.
 

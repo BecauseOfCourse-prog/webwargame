@@ -278,12 +278,13 @@ test('private static image uploads remain bounded, persisted and administrator-o
       await withApplication(async (origin) => {
         await databaseOperation(() => database.user.update({ where: { id: administrator.id }, data: { role: 'PLAYER' } }));
         try {
-          safeError(await upload(origin), 403, 'ACCESS_DENIED');
-          for (const content of [false, true]) safeError(await read(origin, persisted.asset.id, content), 403, 'ACCESS_DENIED');
+          safeError(await upload(origin), 401, 'UNAUTHENTICATED');
+          for (const content of [false, true]) safeError(await read(origin, persisted.asset.id, content), 401, 'UNAUTHENTICATED');
         } finally {
           await databaseOperation(() => database.user.update({ where: { id: administrator.id }, data: { role: 'ADMIN' } }));
         }
         const revoked = await login(origin, administrator);
+        adminSession = revoked;
         const tokenHash = digest(revoked.cookie.split('=')[1]);
         await databaseOperation(() => database.session.delete({ where: { tokenHash } }));
         safeError(await upload(origin, formats.png, 'image/png', revoked), 401, 'UNAUTHENTICATED');
@@ -309,11 +310,12 @@ test('private static image uploads remain bounded, persisted and administrator-o
               await databaseOperation(() => database.session.delete({ where: { tokenHash } }));
             }
             held.end(formats.png.subarray(20));
-            safeError(await held.result, mode === 'demotion' ? 403 : 401, mode === 'demotion' ? 'ACCESS_DENIED' : 'UNAUTHENTICATED');
+            safeError(await held.result, 401, 'UNAUTHENTICATED');
           } finally {
             held.destroy();
             if (mode === 'demotion') {
               await databaseOperation(() => database.user.update({ where: { id: administrator.id }, data: { role: 'ADMIN' } }));
+              adminSession = await login(origin, administrator);
             }
           }
         }

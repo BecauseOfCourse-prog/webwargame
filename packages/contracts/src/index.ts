@@ -5,6 +5,42 @@ export const CURRENT_USER_PATH = '/api/auth/me';
 export const LOGOUT_PATH = '/api/auth/logout';
 export const ADMIN_OVERVIEW_PATH = '/api/admin/overview';
 export const ADMIN_ASSETS_PATH = '/api/admin/assets';
+export const ADMIN_ACCOUNTS_PATH = '/api/admin/accounts';
+export const RESET_PASSWORD_PATH = '/api/auth/reset-password';
+
+export interface AdminAccount {
+  id: string;
+  username: string;
+  role: 'PLAYER' | 'ADMIN';
+  suspendedAt: string | null;
+  passwordResetRequired: boolean;
+  resetExpiresAt: string | null;
+  version: number;
+  createdAt: string;
+}
+export interface AdminAccountsResponse {
+  accounts: AdminAccount[];
+  page: number;
+  pageSize: 20;
+  total: number;
+  activeAdministrators: number;
+}
+export interface AdminAccountResponse { account: AdminAccount; }
+export interface AdminResetResponse extends AdminAccountResponse { code: string; expiresAt: string; }
+export type AccountAuditAction = 'ROLE_CHANGED' | 'SUSPENDED' | 'RESUMED' | 'PASSWORD_RESET_ISSUED' | 'PASSWORD_RESET_COMPLETED';
+export interface AccountAuditEntry {
+  id: string;
+  actor: { id: string; username: string } | null;
+  targetId: string;
+  action: AccountAuditAction;
+  fromRole: 'PLAYER' | 'ADMIN';
+  toRole: 'PLAYER' | 'ADMIN';
+  fromSuspended: boolean;
+  toSuspended: boolean;
+  createdAt: string;
+}
+export interface AccountAuditResponse { events: AccountAuditEntry[]; page: number; pageSize: 20; total: number; }
+export interface ResetPasswordRequest { code: string; password: string; }
 
 export interface AssetMetadata {
   id: string;

@@ -184,9 +184,12 @@ test('administrator provisioning, direct permissions and last-administrator prot
 
     await suite.test('role authorization reads current database roles rather than the login response', async () => {
       await promote(player.id);
+      // Promotion revokes the pre-existing player session; a fresh login sees the new role.
+      error(await overview(playerCookie), 401, 'UNAUTHENTICATED');
+      playerCookie = await login(player);
       assert.equal((await overview(playerCookie)).response.status, 200);
       await safe(() => database.user.update({ where: { id: player.id }, data: { role: 'PLAYER' } }));
-      error(await overview(playerCookie), 403, 'ACCESS_DENIED');
+      error(await overview(playerCookie), 401, 'UNAUTHENTICATED');
     });
 
     await suite.test('bulk deletion and demotion cannot remove all administrators', async () => {

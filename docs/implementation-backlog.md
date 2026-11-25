@@ -1,8 +1,8 @@
 # Implementation Backlog
 
-Updated: 2026-10-25
+Updated: 2026-11-25
 
-Status: T01–T10, B02/M0, M1 accounts/roles and B06 image-storage foundation complete; T11 ready; game-object authorization remains T17
+Status: T01–T11, B02/M0, M1 accounts/roles and B06 image-storage foundation complete; game-object authorization remains T17
 
 Scope and acceptance criteria: [Product backlog](product-backlog.md)
 
@@ -115,7 +115,7 @@ T01–T04 are complete, including the CI-runtime correction and the verified loc
 | --- | --- | --- | --- | --- |
 | T09 / B06 | P1 | Done | Private image upload/metadata/content APIs with decoded static PNG/JPEG/WebP, generated private files, durable pending reservations and configured byte/pixel/disk/free-space limits. [Specification](specs/0012-t09-private-image-storage.md); [verification](verification/t09-private-image-storage.md); [Review 0010](reviews/0010-t09-code-review.md): corrected a reproduced isolation-default quota defect; reviewed Windows root 117 pass/one privilege skip and database 62/62. Initial Linux root 118/118 and actual API-container replacement retained protected bytes/metadata; five main migrations current. B06 remains partial until T10; no upload UI yet. | T08 complete |
 | T10 / B06 | P1 | Done | Internal reference registry, archive/restore, seven-day retention and manual guarded cleanup. [Specification](specs/0013-t10-asset-lifecycle.md); [verification](verification/t10-asset-lifecycle.md); [Review 0011](reviews/0011-t10-code-review.md): corrected a reproduced queued-mutation authority defect; fresh Windows root 141 pass/one privilege skip and database77/77. Initial Linux142/142 remains separately scoped; six migrations current. Referenced/fresh/active files survive and writer markers block cleanup until safe recovery. B06 storage foundation Done; actual catalog owners/UI remain T12–T14. | T09 complete |
-| T11 / B10 | P1 | Ready | Add account list, role changes, suspension and administrator-assisted password reset UI/API. Audit changes and revoke affected sessions; extend T08 last-admin protection to suspension. Game membership effects are completed in T17, not claimed here. | T08 complete |
+| T11 / B10 | P1 | Done | Account APIs/UI, audit, security-session revocation and last-working-admin safeguards. `pnpm check`, PostgreSQL integration 92/92, authenticated admin workflow and 390 × 844 browser layout passed using disposable data. [Specification](specs/0014-t11-account-management.md); [verification](verification/t11-account-management.md). Game membership effects remain T17. | T08 complete |
 | T12 / B07 | P1 | Needs input | Implement unit catalog UI/API with validated stats/abilities and image selection. Create/edit/publish immutable versions and archive used definitions; existing deployed instances retain selected versions. | T09–T10; Q01 |
 | T13 / B08 | P1 | Needs input | Implement map upload, calibration and required terrain data UI/API. Preview coordinates and reject invalid calibration; publish immutable versions; an uploaded picture does not infer obstacles. | T09–T10; Q02 |
 | T14 / B09 | P1 | Needs input | Implement illustrated rules editor, preview and reader. Drafts stay private, published content is safely rendered, images resolve and versions link to supported engine rules where applicable. Explain editor choice before adding it. | T09–T10; Q07; Q01 for gameplay links |

@@ -21,6 +21,14 @@ enum AssetOwnerKind {
   RULES
 }
 
+enum AccountAuditAction {
+  ROLE_CHANGED
+  SUSPENDED
+  RESUMED
+  PASSWORD_RESET_ISSUED
+  PASSWORD_RESET_COMPLETED
+}
+
 // Internal singleton for the last-administrator locking protocol. The migration
 // seeds id=1 and enforces its singleton constraint; this is not account content.
 model AdministratorGuard {
@@ -33,9 +41,42 @@ model User {
   normalizedUsername String   @unique @db.VarChar(32)
   passwordHash       String
   role               UserRole @default(PLAYER)
+  suspendedAt        DateTime? @db.Timestamptz(3)
+  passwordResetRequired Boolean @default(false)
+  version            Int @default(0)
   createdAt          DateTime @default(now()) @db.Timestamptz(3)
   sessions           Session[]
   assets             Asset[]
+  passwordReset      PasswordReset?
+  auditAsActor       AccountAudit[] @relation("AuditActor")
+  auditAsTarget      AccountAudit[] @relation("AuditTarget")
+}
+
+model PasswordReset {
+  tokenHash String @id @db.Char(64)
+  userId String @unique @db.Uuid
+  userVersion Int
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  expiresAt DateTime @db.Timestamptz(3)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+}
+
+model AccountAudit {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  actorId String? @db.Uuid
+  targetId String @db.Uuid
+  action AccountAuditAction
+  fromRole UserRole
+  toRole UserRole
+  fromSuspended Boolean
+  toSuspended Boolean
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  actor User? @relation("AuditActor", fields: [actorId], references: [id], onDelete: Restrict)
+  target User @relation("AuditTarget", fields: [targetId], references: [id], onDelete: Restrict)
+
+  @@index([targetId, createdAt, id])
 }
 
 model Asset {

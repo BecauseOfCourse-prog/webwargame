@@ -6,6 +6,7 @@ const usage = 'Usage: pnpm admin:bootstrap --username <existing-player-username>
 const messages = {
   INVALID_USERNAME: 'Use an existing username with 3–32 Latin letters, digits, periods, hyphens or underscores.',
   USER_NOT_FOUND: 'Account not found. Register the player first, then run this command with that username.',
+  USER_INACTIVE: 'This account is suspended or requires password recovery. Use an account with working access.',
   ADMIN_ALREADY_EXISTS: 'An administrator already exists. This command only provisions the first administrator.',
   BOOTSTRAP_UNAVAILABLE: 'Administrator provisioning failed. Check local configuration, database availability and migrations.',
 };

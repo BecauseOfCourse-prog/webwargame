@@ -1,8 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import type { OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import type { SessionResponse } from '@webwargame/contracts';
 import { PrismaService } from '../database/prisma.service.js';
-import { authUnavailable, unauthenticated } from './auth-errors.js';
+import { authUnavailable, invalidCredentials, unauthenticated } from './auth-errors.js';
 import { createSessionToken, csrfTokenForSession, hashSessionToken, SESSION_ABSOLUTE_MS, SESSION_IDLE_MS } from './session-security.js';
 
 interface SessionRow {
@@ -17,6 +17,7 @@ export interface SessionIdentity {
   id: string;
   username: string;
   role: 'PLAYER' | 'ADMIN';
+  version: number;
 }
 
 @Injectable()
@@ -41,22 +42,38 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
     const token = createSessionToken();
     const tokenHash = hashSessionToken(token);
     try {
-      const deadlines = await this.database.$transaction(async (transaction) => {
+      const created = await this.database.$transaction(async (transaction) => {
+        // Credential verification is deliberately outside this lock. The same
+        // guard as account mutations closes the reset/suspension-versus-login
+        // race before any new session can be inserted.
+        const guards = await transaction.$executeRaw`
+          UPDATE "AdministratorGuard" SET "id" = "id" WHERE "id" = 1
+        `;
+        if (guards !== 1) throw new Error('Account guard is unavailable.');
+        const current = await transaction.user.findUnique({ where: { id: user.id }, select: {
+          id: true, username: true, role: true, version: true, suspendedAt: true, passwordResetRequired: true,
+        } });
+        if (!current || current.suspendedAt !== null || current.passwordResetRequired || current.version !== user.version) {
+          throw invalidCredentials();
+        }
         // Replace only the session presented by this browser, after credentials
-        // have been verified. A failed insert rolls this deletion back.
+        // and their current version have been verified. A failed insert rolls
+        // this deletion back; a rejected stale login leaves it untouched.
         if (previousToken) await transaction.session.deleteMany({ where: { tokenHash: hashSessionToken(previousToken) } });
-        return transaction.$queryRaw<Pick<SessionRow, 'expiresAt' | 'idleExpiresAt'>[]>`
+        const deadlines = await transaction.$queryRaw<Pick<SessionRow, 'expiresAt' | 'idleExpiresAt'>[]>`
           INSERT INTO "Session" ("tokenHash", "userId", "createdAt", "expiresAt", "idleExpiresAt")
-          VALUES (${tokenHash}, ${user.id}::uuid, CURRENT_TIMESTAMP,
+          VALUES (${tokenHash}, ${current.id}::uuid, CURRENT_TIMESTAMP,
             CURRENT_TIMESTAMP + ${SESSION_ABSOLUTE_MS} * INTERVAL '1 millisecond',
             CURRENT_TIMESTAMP + ${SESSION_IDLE_MS} * INTERVAL '1 millisecond')
           RETURNING "expiresAt", "idleExpiresAt"
         `;
-      });
-      const deadline = deadlines[0];
-      if (!deadline) throw new Error('Session was not created.');
-      return { token, response: this.response({ ...user, ...deadline }, token) };
-    } catch {
+        const deadline = deadlines[0];
+        if (!deadline) throw new Error('Session was not created.');
+        return { ...current, ...deadline };
+      }, { isolationLevel: 'ReadCommitted', maxWait: 5000, timeout: 5000 });
+      return { token, response: this.response(created, token) };
+    } catch (error) {
+      if (error instanceof UnauthorizedException) throw error;
       throw authUnavailable();
     }
   }
@@ -71,12 +88,14 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
         SET "idleExpiresAt" = GREATEST(s."idleExpiresAt", LEAST(s."expiresAt", CURRENT_TIMESTAMP + ${SESSION_IDLE_MS} * INTERVAL '1 millisecond'))
         FROM "User" u
         WHERE s."tokenHash" = ${tokenHash} AND s."userId" = u."id"
+          AND u."suspendedAt" IS NULL AND NOT u."passwordResetRequired"
           AND s."expiresAt" > CURRENT_TIMESTAMP AND s."idleExpiresAt" > CURRENT_TIMESTAMP
         RETURNING u."id", u."username", u."role", s."expiresAt", s."idleExpiresAt"
       ` : await this.database.$queryRaw<SessionRow[]>`
         SELECT u."id", u."username", u."role", s."expiresAt", s."idleExpiresAt"
         FROM "Session" s JOIN "User" u ON s."userId" = u."id"
         WHERE s."tokenHash" = ${tokenHash} AND s."expiresAt" > CURRENT_TIMESTAMP AND s."idleExpiresAt" > CURRENT_TIMESTAMP
+          AND u."suspendedAt" IS NULL AND NOT u."passwordResetRequired"
       `;
     } catch {
       throw authUnavailable();

@@ -3,7 +3,7 @@ import { isUtf8 } from 'node:buffer';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
-import { CURRENT_USER_PATH, LOGIN_PATH, LOGOUT_PATH, REGISTRATION_PATH } from '@webwargame/contracts';
+import { CURRENT_USER_PATH, LOGIN_PATH, LOGOUT_PATH, REGISTRATION_PATH, RESET_PASSWORD_PATH } from '@webwargame/contracts';
 import { AppModule } from './app.module.js';
 import type { RuntimeConfiguration } from './config/environment.js';
 import { RegistrationLimiter } from './registration/registration-limiter.js';
@@ -36,6 +36,18 @@ export async function createApplication(configuration: RuntimeConfiguration): Pr
     next();
   });
   const loginLimiter = new RegistrationLimiter();
+  const resetLimiter = new RegistrationLimiter({ perAddressLimit: 10, globalLimit: 100 });
+  app.use(RESET_PASSWORD_PATH, (request: IncomingMessage, response: ServerResponse, next: () => void) => {
+    response.setHeader('Cache-Control', 'no-store'); response.setHeader('X-Content-Type-Options', 'nosniff');
+    if (request.method === 'POST') {
+      const retry = resetLimiter.consume(request.socket.remoteAddress ?? 'unknown');
+      if (retry !== undefined) { response.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': String(retry) });
+        response.end(JSON.stringify({ code: 'RESET_RATE_LIMITED', message: 'Too many reset attempts.' })); return; }
+    }
+    if (!isTrustedSessionRequest(request, configuration.publicOrigin)) { response.writeHead(403, { 'Content-Type': 'application/json' });
+      response.end(JSON.stringify({ code: 'CSRF_REJECTED', message: 'Request verification failed.' })); return; }
+    next();
+  });
   for (const path of [LOGIN_PATH, CURRENT_USER_PATH, LOGOUT_PATH, '/api/admin']) {
     app.use(path, (request: IncomingMessage, response: ServerResponse, next: () => void) => {
       response.setHeader('Cache-Control', path === '/api/admin' ? 'private, no-store' : 'no-store');

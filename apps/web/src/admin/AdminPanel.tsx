@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { AdminOverviewResponse } from '@webwargame/contracts';
 import { browserSession } from '../auth/browser-session.ts';
 import { AdminApiError, getAdminOverview } from './admin-client.ts';
+import { AccountManager } from './AccountManager.tsx';
 
 type Access = { phase: 'checking' } | { phase: 'allowed'; overview: AdminOverviewResponse } |
   { phase: 'denied' | 'error'; message: string };
@@ -42,10 +43,7 @@ export function AdminPanel({ userId }: { userId: string }) {
         <dt>Учётная запись</dt><dd>{access.overview.user.username}</dd>
         <dt>Роль</dt><dd>Администратор</dd>
       </dl>
-      <div className="admin-empty">
-        <h2>Готовимся к первой партии</h2>
-        <p>Управление правилами, изображениями, армиями и игроками появится на следующих этапах.</p>
-      </div>
+      <AccountManager userId={userId} />
     </> : <p className="form-message error" role="alert">{access.message}</p>}
     <div className="account-toolbar admin-toolbar">
       <a href="/" className="text-link">К учётной записи</a>

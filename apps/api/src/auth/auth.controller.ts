@@ -6,11 +6,19 @@ import { LoginRateLimitException } from './auth-errors.js';
 import { AuthService } from './auth.service.js';
 import { buildSessionCookie, clearSessionCookie, isValidCsrfToken, readSessionToken } from './session-security.js';
 import { SessionService } from './session.service.js';
+import { PasswordResetService } from './password-reset.service.js';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authentication: AuthService, private readonly sessions: SessionService,
-    private readonly configuration: RuntimeConfiguration) {}
+    private readonly configuration: RuntimeConfiguration, private readonly passwordResets: PasswordResetService) {}
+
+  @Post('reset-password')
+  @HttpCode(204)
+  async resetPassword(@Body() body: unknown, @Headers('content-type') contentType: string | undefined): Promise<void> {
+    this.requireJson(contentType);
+    await this.passwordResets.reset(body);
+  }
 
   @Post('login')
   @HttpCode(200)

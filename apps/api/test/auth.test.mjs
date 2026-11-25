@@ -10,7 +10,8 @@ import { RuntimeConfiguration } from '../dist/config/environment.js';
 import { DUMMY_PASSWORD_HASH, PasswordHasher } from '../dist/registration/password-hasher.js';
 
 const credentials = { username: '  Commander  ', password: '  private passphrase 🐉  ' };
-const user = { id: 'user-id', username: 'Commander', role: 'PLAYER', passwordHash: 'stored encoded hash' };
+const user = { id: 'user-id', username: 'Commander', role: 'PLAYER', passwordHash: 'stored encoded hash',
+  version: 7, suspendedAt: null, passwordResetRequired: false };
 
 function expectStatus(status, code) {
   return (error) => {
@@ -31,7 +32,7 @@ test('login normalizes the lookup, verifies exact password and sends no hash to 
   assert.equal(await service.login(credentials, 'old-token'), response);
   assert.deepEqual(observations, [
     { normalizedUsername: 'commander' }, [user.passwordHash, credentials.password],
-    [{ id: user.id, username: user.username, role: user.role }, 'old-token'],
+    [{ id: user.id, username: user.username, role: user.role, version: user.version }, 'old-token'],
   ]);
 });
 
@@ -53,6 +54,62 @@ test('unknown user and wrong password each perform one verification and return t
   }
   assert.deepEqual(responses[0], responses[1]);
   assert.deepEqual(DUMMY_PASSWORD_HASH.split('$')[3].split(',').sort(), ['m=19456', 'p=1', 't=2']);
+});
+
+test('suspended and reset-required accounts still verify once but cannot create a session', async () => {
+  for (const state of [{ suspendedAt: new Date() }, { passwordResetRequired: true }]) {
+    const verifications = [];
+    const service = new AuthService({ user: { findUnique: async () => ({ ...user, ...state }) } },
+      { verify: async (...args) => { verifications.push(args); return true; } },
+      { create: async () => assert.fail('An inactive account must not reach session creation.') });
+    await assert.rejects(() => service.login(credentials), expectStatus(401, 'INVALID_CREDENTIALS'));
+    assert.deepEqual(verifications, [[user.passwordHash, credentials.password]]);
+  }
+});
+
+function sessionCreationFixture({ current = user, guardCount = 1 } = {}) {
+  const calls = [];
+  const deadline = { expiresAt: new Date('2027-01-08T12:00:00.000Z'), idleExpiresAt: new Date('2027-01-02T12:00:00.000Z') };
+  const transaction = {
+    $executeRaw: async () => { calls.push('guard'); return guardCount; },
+    user: { findUnique: async ({ where }) => { assert.deepEqual(where, { id: user.id }); calls.push('fresh-user'); return current; } },
+    session: { deleteMany: async () => { calls.push('rotate'); } },
+    $queryRaw: async () => { calls.push('insert'); return [deadline]; },
+  };
+  const service = new SessionService({ $transaction: async (operation, options) => {
+    assert.equal(options.isolationLevel, 'ReadCommitted');
+    return operation(transaction);
+  } });
+  return { service, calls, transaction, deadline };
+}
+
+test('session creation serializes with account changes and returns the fresh identity only', async () => {
+  const current = { ...user, username: 'Fresh.Commander' };
+  const { service, calls, deadline } = sessionCreationFixture({ current });
+  const result = await service.create({ ...user, username: 'Cached.Name', role: 'ADMIN' }, 'old-token');
+  assert.deepEqual(calls, ['guard', 'fresh-user', 'rotate', 'insert']);
+  assert.match(result.token, /^[A-Za-z0-9_-]{43}$/);
+  assert.deepEqual(result.response.user, { id: current.id, username: current.username, role: current.role });
+  assert.equal(result.response.expiresAt, deadline.expiresAt.toISOString());
+  assert.equal(result.response.idleExpiresAt, deadline.idleExpiresAt.toISOString());
+  assert.equal(result.response.csrfToken, csrfTokenForSession(result.token));
+  assert.ok(!JSON.stringify(result.response).includes(user.passwordHash));
+  assert.equal(Object.hasOwn(result.response.user, 'version'), false);
+});
+
+test('a stale verified login cannot rotate the old session or insert after account security changes', async () => {
+  for (const current of [null, { ...user, version: user.version + 1 }, { ...user, suspendedAt: new Date() },
+    { ...user, passwordResetRequired: true }]) {
+    const { service, calls } = sessionCreationFixture({ current });
+    await assert.rejects(() => service.create(user, 'old-token'), expectStatus(401, 'INVALID_CREDENTIALS'));
+    assert.deepEqual(calls, ['guard', 'fresh-user']);
+  }
+});
+
+test('a missing account guard fails closed before any session mutation', async () => {
+  const { service, calls } = sessionCreationFixture({ guardCount: 0 });
+  await assert.rejects(() => service.create(user), expectStatus(503, 'AUTH_UNAVAILABLE'));
+  assert.deepEqual(calls, ['guard']);
 });
 
 test('invalid login payloads cannot query accounts or create sessions', async () => {

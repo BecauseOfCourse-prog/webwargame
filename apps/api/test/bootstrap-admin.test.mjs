@@ -16,10 +16,11 @@ function expectCode(code) {
 
 function fixture({ user = { id: 'commander-id', role: 'PLAYER' }, otherAdmin = null, guardCount = 1 } = {}) {
   const calls = [];
+  const currentUser = user === null ? null : { suspendedAt: null, passwordResetRequired: false, ...user };
   const transaction = {
     $executeRaw: async () => { calls.push('guard'); return guardCount; },
     user: {
-      findUnique: async ({ where }) => { calls.push(['lookup', where.normalizedUsername]); return user; },
+      findUnique: async ({ where }) => { calls.push(['lookup', where.normalizedUsername]); return currentUser; },
       findFirst: async () => { calls.push('other-admin'); return otherAdmin; },
       update: async ({ where, data }) => { calls.push(['promote', where.id, data.role]); },
     },
@@ -53,6 +54,16 @@ test('bootstrap refuses an unknown account or a player when another administrato
     const { database, calls } = fixture(settings);
     await assert.rejects(() => bootstrapAdministrator(database, 'Commander'), expectCode(code));
     assert.ok(!calls.some((call) => Array.isArray(call) && ['promote', 'revoke'].includes(call[0])));
+  }
+});
+
+test('bootstrap cannot bypass suspension or a pending reset even for an existing administrator', async () => {
+  for (const role of ['PLAYER', 'ADMIN']) {
+    for (const state of [{ suspendedAt: new Date() }, { passwordResetRequired: true }]) {
+      const { database, calls } = fixture({ user: { id: 'blocked-account', role, ...state } });
+      await assert.rejects(() => bootstrapAdministrator(database, 'Commander'), expectCode('USER_INACTIVE'));
+      assert.deepEqual(calls, ['guard', ['lookup', 'commander']]);
+    }
   }
 });
 
